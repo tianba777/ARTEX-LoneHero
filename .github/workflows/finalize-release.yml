@@ -1,0 +1,151 @@
+name: finalize-verified-release
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing immutable release tag
+        required: true
+        type: string
+      verified_run:
+        description: Original release run with five packages and both tested architecture images
+        required: true
+        type: string
+permissions:
+  contents: write
+  packages: write
+  actions: write
+concurrency:
+  group: finalize-${{ inputs.tag }}
+  cancel-in-progress: false
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ inputs.tag }}
+      VERIFIED_RUN: ${{ inputs.verified_run }}
+      IMAGE: ghcr.io/tianba777/artex-lonehero
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - name: Validate tested source and stop the original publication
+        id: guard
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ "$VERIFIED_RUN" =~ ^[0-9]+$ ]]
+          test "$VERIFIED_RUN" != "$GITHUB_RUN_ID"
+          test "$(gh api "repos/$GH_REPO" --jq .private)" = true
+          export RELEASE_COMMIT
+          RELEASE_COMMIT=$(git rev-parse HEAD)
+          export RELEASE_WORKFLOW_ID
+          RELEASE_WORKFLOW_ID=$(gh api "repos/$GH_REPO/actions/workflows/release.yml" --jq .id)
+          gh api "repos/$GH_REPO/actions/runs/$VERIFIED_RUN" > /tmp/original-run.json
+          gh api "repos/$GH_REPO/actions/runs/$VERIFIED_RUN/jobs?per_page=100" > /tmp/original-jobs.json
+          python3 - <<'PY'
+          import json, os
+          run = json.load(open('/tmp/original-run.json'))
+          assert run['workflow_id'] == int(os.environ['RELEASE_WORKFLOW_ID'])
+          assert run['head_sha'] == os.environ['RELEASE_COMMIT']
+          assert run['head_branch'] == os.environ['RELEASE_TAG']
+          assert run['event'] == 'push'
+          required = ['prepare', 'frontend']
+          required += [f'binaries ({osname}, {arch})' for osname, arch in
+                       [('linux', 'amd64'), ('linux', 'arm64'), ('darwin', 'amd64'), ('darwin', 'arm64'), ('windows', 'amd64')]]
+          required += ['docker (amd64, ubuntu-24.04)', 'docker (arm64, ubuntu-24.04-arm)']
+          jobs = json.load(open('/tmp/original-jobs.json'))['jobs']
+          assert all(any(j['name'] == name and j['conclusion'] == 'success' for j in jobs) for name in required)
+          PY
+          # Cancel only the validated run, then wait so its final jobs cannot race us.
+          if [ "$(gh api "repos/$GH_REPO/actions/runs/$VERIFIED_RUN" --jq .status)" != completed ]; then
+            gh run cancel "$VERIFIED_RUN" --repo "$GH_REPO" || true
+          fi
+          for attempt in $(seq 1 30); do
+            status=$(gh api "repos/$GH_REPO/actions/runs/$VERIFIED_RUN" --jq .status)
+            [ "$status" = completed ] && break
+            sleep 2
+          done
+          test "$status" = completed
+          if gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > /tmp/existing-release.json 2>/tmp/existing-release.err; then
+            test "$(jq -r .targetCommitish /tmp/existing-release.json)" = "$RELEASE_COMMIT"
+            if [ "$(jq -r .isDraft /tmp/existing-release.json)" = false ]; then
+              echo 'already_published=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          elif ! grep -qi 'release not found\|HTTP 404' /tmp/existing-release.err; then
+            cat /tmp/existing-release.err >&2
+            exit 1
+          fi
+          echo "commit=$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        if: steps.guard.outputs.already_published != 'true'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.verified_run }}
+          pattern: pkg-*
+          merge-multiple: true
+          path: dist
+      - name: Package the same source Skill and verify all archives
+        if: steps.guard.outputs.already_published != 'true'
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          import subprocess
+          import zipfile
+          paths = subprocess.check_output(['git', 'ls-files', '-z', '--', 'agent-skills/artex-operator/']).decode().strip('\0').split('\0')
+          assert 'agent-skills/artex-operator/SKILL.md' in paths
+          assert 'agent-skills/artex-operator/LICENSE' in paths
+          output = Path('dist/artex-operator-skill.zip')
+          with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
+              for name in sorted(paths):
+                  path = Path(name)
+                  archive.write(path, path.relative_to('agent-skills'))
+          output.with_suffix('.zip.sha256').write_text(f'{hashlib.sha256(output.read_bytes()).hexdigest()}  {output.name}\n')
+          PY
+          cd dist
+          for target in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64 windows-amd64; do
+            test -s "artex-${RELEASE_TAG#v}-${target}.zip"
+          done
+          sha256sum *.zip > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - uses: docker/setup-buildx-action@v3
+        if: steps.guard.outputs.already_published != 'true'
+      - uses: docker/login-action@v3
+        if: steps.guard.outputs.already_published != 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish the two previously tested images
+        if: steps.guard.outputs.already_published != 'true'
+        run: |
+          test "$(gh api users/tianba777/packages/container/artex-lonehero --jq .visibility)" = private
+          docker buildx imagetools create --tag "$IMAGE:$RELEASE_TAG" --tag "$IMAGE:latest" \
+            "$IMAGE:$RELEASE_TAG-amd64" "$IMAGE:$RELEASE_TAG-arm64"
+          docker buildx imagetools inspect "$IMAGE:$RELEASE_TAG" --raw > /tmp/manifest.json
+          jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null and index("arm64") != null' /tmp/manifest.json
+          gh api users/tianba777/packages/container/artex-lonehero --jq '{name,visibility}' >> "$GITHUB_STEP_SUMMARY"
+      - uses: softprops/action-gh-release@v2
+        if: steps.guard.outputs.already_published != 'true'
+        with:
+          tag_name: ${{ inputs.tag }}
+          target_commitish: ${{ steps.guard.outputs.commit }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.zip
+            dist/SHA256SUMS
+            dist/artex-operator-skill.zip.sha256
+          body: |
+            私有正式版本。包含五个平台安装包、独立外部 Agent 技能和 SHA256 校验文件。
+            Docker：`ghcr.io/tianba777/artex-lonehero:${{ inputs.tag }}`，另提供 `latest`，支持 Linux AMD64/ARM64。
+            从已通过检查的原始发布任务复用产物，保持原版本标签与代码不变。
+      - name: Publish complete private release
+        if: steps.guard.outputs.already_published != 'true'
+        run: |
+          test "$(gh api "repos/$GH_REPO" --jq .private)" = true
+          test "$(gh api users/tianba777/packages/container/artex-lonehero --jq .visibility)" = private
+          gh release edit "$RELEASE_TAG" --title "ARTEX 孤胆英豪 $RELEASE_TAG" --draft=false --latest
