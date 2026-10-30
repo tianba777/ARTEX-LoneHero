@@ -38,7 +38,7 @@
 
 本地首次克隆后可直接运行 scripts/sync-upstream.sh：要求工作区干净，拉取 RuoJi6/main 后创建独立同步分支，普通 merge 保留双方历史。不会 reset、rebase、强推或自动部署。发生冲突会停在同步分支，解决后检查；要放弃这次未完成的合并使用 git merge --abort。
 
-GitHub Actions 的 sync-ruoji6 支持手工运行，成功时推送同步分支并创建草稿 PR；冲突时不推送不完整合并。仓库需允许 Actions 创建 PR。没有安排自动合并或定时任务。
+GitHub Actions 的 sync-ruoji6 支持手工运行，成功时推送同步分支，并在仓库权限允许时创建草稿 PR；当前仓库限制 Actions 创建和审批 PR，因此保留该限制，提供比较链接由维护者创建 PR。冲突时不推送不完整合并。没有安排自动合并或定时任务。
 
 每次同步重点复核：自更新源、镜像地址、许可证/署名、Schema 增量迁移、已有任务/提示词/凭据数据、Worker 严格绑定、日历和暂停恢复、经验采纳边界。升级前备份数据库、data、skills、配置及签名密钥；二进制回滚不会回退 Schema。
 

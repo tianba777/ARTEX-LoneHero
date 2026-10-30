@@ -37,4 +37,12 @@ jobs:
 
           合并前需完成 CI、确认自更新来源仍指向本项目、验证已有数据及自定义提示词的兼容性。
           BODY
-          gh pr create --draft --base main --head "$SYNC_BRANCH" --title '同步 RuoJi6 上游更新' --body-file /tmp/sync-body.md
+          if ! gh pr create --draft --base main --head "$SYNC_BRANCH" --title '同步 RuoJi6 上游更新' --body-file /tmp/sync-body.md 2>/tmp/sync-pr.err; then
+            if grep -qi 'not permitted to create or approve pull requests' /tmp/sync-pr.err; then
+              echo "同步分支已保存；仓库限制 Actions 创建 PR，请由维护者打开比较链接创建 PR。"
+              echo "https://github.com/$GITHUB_REPOSITORY/compare/main...$SYNC_BRANCH?expand=1" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              cat /tmp/sync-pr.err >&2
+              exit 1
+            fi
+          fi
