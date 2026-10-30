@@ -744,6 +744,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/update/settings", s.getUpdateSettings)
 	mux.HandleFunc("PUT /api/update/settings", s.putUpdateSettings)
 	mux.HandleFunc("GET /api/update/check", s.updateCheck)
+	mux.HandleFunc("GET /api/update/upstreams", s.updateUpstreams)
 	mux.HandleFunc("POST /api/update/apply", s.updateApply)
 	mux.HandleFunc("POST /api/update/rollback", s.updateRollback)
 	mux.HandleFunc("GET /api/update/stream", s.updateStream)

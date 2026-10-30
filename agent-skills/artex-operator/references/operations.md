@@ -24,6 +24,7 @@
 | 历史经验 | `/api/lonehero/settings`、`/api/lonehero/lessons`、`/api/tasks/{id}/lessons/extract`；默认 shadow，采纳后还需 inject，保持任务/公司隔离 |
 | 费用 | `GET /api/tokens/usage`；`PUT /api/lonehero/prices/{pid}`，body input/output/cache_read/cache_write，单位 EUR/百万 Token |
 | 程序更新 | `/api/update/check`、`/settings`、`/apply`、`/rollback`；apply/rollback 会重启，必须属于委托且已有备份/恢复路径 |
+| 上游动态 | `GET /api/update/upstreams`（可选 `?force=1`）；只读查看 RuoJi6 主干及 BaaRai 能力供体的正式版、提交和记录快照差异，不触发合并/安装；v0.4.0 之后新增，旧实例可能返回 404 |
 
 ## 日历
 

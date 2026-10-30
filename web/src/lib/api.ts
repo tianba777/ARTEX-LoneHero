@@ -1,4 +1,5 @@
 import type {HeroGap, HeroLesson, HeroOutcome, HeroPrices, LoneHeroOptions} from "./lonehero-types";
+import type { UpstreamProject } from "./upstream-types";
 // Real backend client. /api/* is proxied to the Go backend (next.config rewrites).
 // Returns the domain types in lib/types.ts. Shapes match the backend handlers;
 // a few fields the backend serializes differently (e.g. created_at as a unix int)
@@ -1475,6 +1476,8 @@ export const api = {
   getUpdateSettings: () => get<UpdateSettings>("/update/settings"),
   saveUpdateSettings: (settings: UpdateSettings) => put<UpdateSettings>("/update/settings", settings),
   checkUpdate: (force = false) => get<UpdateCheck>(`/update/check${force ? "?force=1" : ""}`),
+  checkUpstreams: (force = false) =>
+    get<{ projects: UpstreamProject[] }>(`/update/upstreams${force ? "?force=1" : ""}`),
   // 202 即返回，实际下载在后台跑，进度走 /api/update/stream。
   applyUpdate: () => post<{ ok: boolean; target: string }>(`/update/apply`),
   rollbackUpdate: () => post<{ ok: boolean }>(`/update/rollback`),

@@ -10,6 +10,7 @@
   },
   "donor": {
     "repository": "BaaRai/ARTEX",
+    "branch": "main",
     "commit": "7f8c7cbcae7324e823d8952371ae2013521cc711",
     "delta_base": "e233c02",
     "method": "Selective feature delta, reconciled against the RuoJi6 implementation",

@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { api, openSSE } from "@/lib/api";
 import type { UpdateCheck, UpdateProgress, UpdateSettings } from "@/lib/types";
+import { UpstreamStatus } from "./upstream-status";
 
 /** 等待新版本上线的最长时间。一次升级要经过三次进程启动（暂存 → 换装 → 新版），
  *  每次都是秒级，三分钟足够覆盖慢磁盘和 Docker 容器重建。 */
@@ -46,6 +47,7 @@ export function UpdateCard() {
   // 与 progress 分开：暂存完成后进程就没了，SSE 会断，此时要切到轮询 /api/health。
   const [restarting, setRestarting] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  const [upstreamRevision, setUpstreamRevision] = React.useState(0);
 
   const [network, setNetwork] = React.useState<UpdateSettings | null>(null);
   const [savedNetwork, setSavedNetwork] = React.useState<UpdateSettings | null>(null);
@@ -76,6 +78,7 @@ export function UpdateCard() {
   // quiet 同时决定要不要绕过后端缓存：进页面时的自动检查用缓存（顶栏刚查过），
   // 用户手动点「检查更新」则强制回源，否则刚发布的版本要等缓存过期才看得到。
   const check = React.useCallback((quiet = false) => {
+    if (!quiet) setUpstreamRevision((value) => value + 1);
     setChecking(true);
     api
       .checkUpdate(!quiet)
@@ -417,6 +420,8 @@ export function UpdateCard() {
             </Button>
           )}
         </div>
+
+        <UpstreamStatus revision={upstreamRevision} disabled={busy || restarting || !!networkDirty || savingNetwork} />
 
         <p className="text-xs text-muted-foreground">
           一键更新依赖守护脚本重启程序。请通过 <span className="font-mono">start.sh</span>（Windows 为
