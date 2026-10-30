@@ -183,6 +183,8 @@ package_binary() {
   fi
   cp -R skills "$package_root/"
   cp -R integration "$package_root/"
+  cp -R agent-skills "$package_root/"
+  find "$package_root/agent-skills" -type d -name __pycache__ -prune -exec rm -rf {} +
   cp -R extension "$package_root/"
   cp LICENSE "$package_root/"
   mkdir -p "$package_root/scripts"

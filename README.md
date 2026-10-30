@@ -7,6 +7,7 @@
 - 新增功能入口：系统 → 孤胆英豪
 - [整合说明、默认行为与同步方法](integration/README.md)
 - [添加自己的 Skills、工具和 MCP](integration/EXTENSIONS.md)
+- [让外部 Agent 驱动 ARTEX](agent-skills/artex-operator/SKILL.md)
 - [版本来源与移植记录](integration/SOURCES.json)
 - [实际验证结果与兼容范围](integration/VERIFICATION.md)
 - [正式版安装与私有更新](integration/INSTALL.md)

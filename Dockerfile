@@ -102,6 +102,7 @@ COPY scripts/benchmark/ /app/scripts/benchmark/
 COPY scripts/submission_review/ /app/scripts/submission_review/
 COPY extension/ /app/extension/
 COPY integration/ /app/integration/
+COPY agent-skills/ /app/agent-skills/
 COPY LICENSE /app/LICENSE
 # data/（SQLite + jwt.key）持久化点
 VOLUME ["/app/data"]

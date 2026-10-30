@@ -45,4 +45,6 @@ jobs:
             test -s /app/scripts/submission_review/review.py
             test -s /app/extension/manifest.json
             test -s /app/LICENSE
+            test -s /app/agent-skills/artex-operator/SKILL.md
+            python /app/agent-skills/artex-operator/scripts/artex.py --help
           '

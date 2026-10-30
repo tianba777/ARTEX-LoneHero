@@ -1,0 +1,4 @@
+interface:
+  display_name: "ARTEX 驱动助手"
+  short_description: "通过 ARTEX 接口完成任务编排、进度跟踪、人工接管和结果整理"
+  default_prompt: "使用 $artex-operator 驱动我的 ARTEX，先检查连接和任务状态，再按已有授权完成任务并整理结果。"

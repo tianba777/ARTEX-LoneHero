@@ -1,5 +1,7 @@
 # 添加自己的扩展
 
+如果要让外部 Agent 操作 ARTEX 控制台，使用独立的 [artex-operator 技能](../agent-skills/artex-operator/SKILL.md)。它不是 ARTEX 内部执行器的 Skill，不要上传进下面的运行时 Skill 目录。外部技能可直接配合 v0.4.0 API 使用。
+
 优先使用已有的 Skill、自定义工具和 MCP 入口。添加普通扩展不需要修改任务调度、模型池或新增一套插件加载器。
 
 | 你要添加什么 | 最短路径 |

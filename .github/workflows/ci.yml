@@ -10,6 +10,12 @@ concurrency:
   group: lonehero-ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  agent-skill:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s agent-skills/artex-operator/scripts -p 'test_*.py'
+      - run: python3 agent-skills/artex-operator/scripts/update_routes.py --check
   backend:
     runs-on: ubuntu-24.04
     services:

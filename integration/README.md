@@ -47,6 +47,8 @@ GitHub Actions 的 sync-ruoji6 支持手工运行，成功时推送同步分支�
 
 每次同步重点复核：自更新源、镜像地址、许可证/署名、Schema 增量迁移、已有任务/提示词/凭据数据、Worker 严格绑定、日历和暂停恢复、经验采纳边界。升级前备份数据库、data、skills、配置及签名密钥；二进制回滚不会回退 Schema。
 
+外部 Agent 使用 [artex-operator](../agent-skills/artex-operator/SKILL.md) 驱动控制台。同步接口变更后，核对相关请求契约，运行 `python3 agent-skills/artex-operator/scripts/update_routes.py` 更新接口目录；CI 会检查目录与源码一致。
+
 ## 验证
 
 CI 运行完整 Go 构建、vet、PostgreSQL 测试、前端类型检查与静态构建，以及评测工具的本地单元测试，不跳过已知失败项。测试使用按包隔离的数据库，模型与目标交互使用本地模拟，不运行真实目标扫描。
