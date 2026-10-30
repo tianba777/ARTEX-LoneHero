@@ -2,13 +2,13 @@
 
 基于 RuoJi6/ARTEX，选择性整合 BaaRai 的运行管理、人工接管、费用统计、经验沉淀及扩展工具。保留原有功能和上游同步路径。
 
-- 私有项目：tianba777/ARTEX-LoneHero
+- 私有项目：[tianba777/ARTEX-LoneHero](https://github.com/tianba777/ARTEX-LoneHero)
 - 新增功能入口：系统 → 孤胆英豪
 - [整合说明、默认行为与同步方法](integration/README.md)
 - [版本来源与移植记录](integration/SOURCES.json)
 - 默认发行镜像：ghcr.io/tianba777/artex-lonehero（需要先有本项目的成功发行）
 
-以下保留 RuoJi6 原始说明供对照；其中原仓库、镜像和 Demo 链接属于上游。实际部署、在线更新与发布采用上方本项目说明。
+以下功能说明沿用 RuoJi6 文档，安装和更新来源已调整为本项目；Demo 链接仍属于上游，只演示原有功能。尚未发布本项目正式版本时，请使用下方“从源码编译单二进制”，不要下载其他分支的程序替代。
 
 ---
 
@@ -23,7 +23,7 @@ AI 自主渗透测试系统（Go 后端 + Next.js 前端）
 
 </div>
 
-本仓库为独立维护的 [RuoJi6/ARTEX](https://github.com/RuoJi6/ARTEX)，保留 https://github.com/Autumn-27/ARTEX 的原始提交历史与 AGPL-3.0 许可证。程序发布包从本仓库 Releases 下载，Docker 镜像 [ruoji6/artex](https://hub.docker.com/r/ruoji6/artex) 由本仓库 GitHub Actions 构建并发布。
+本项目以 [RuoJi6/ARTEX](https://github.com/RuoJi6/ARTEX) 为主干，保留 [Autumn-27/ARTEX](https://github.com/Autumn-27/ARTEX) 的原始提交历史与 AGPL-3.0 许可证。正式程序包和镜像由本私有仓库 Actions 构建，更新源固定为本项目。
 
 ---
 
@@ -118,10 +118,10 @@ Demo 只运行 `web/` 前端，构建时启用 `NEXT_PUBLIC_MOCK=1`，不需要 
 
 > 依赖数据库 **PostgreSQL**；探索需配置 **LLM**（`ANTHROPIC_API_KEY` 或 `OPENAI_API_KEY`，也可在 UI 里配）。
 
-### 方式一：一键安装脚本（推荐）
+### 方式一：一键安装脚本（正式镜像发布后）
 
 ```bash
-git clone https://github.com/RuoJi6/ARTEX.git
+git clone https://github.com/tianba777/ARTEX-LoneHero.git ARTEX
 cd ARTEX
 ./install.sh
 ```
@@ -133,19 +133,19 @@ cd ARTEX
 
 装好后打开 **http://localhost:8787**（首次进入 `/setup` 设置管理员密码）。
 
-### 方式二：Docker Compose（手动）
+### 方式二：Docker Compose（手动，正式镜像发布后）
 
 ```bash
-git clone https://github.com/RuoJi6/ARTEX.git
+git clone https://github.com/tianba777/ARTEX-LoneHero.git ARTEX
 cd ARTEX
 cp .env.example .env          # 填 POSTGRES_PASSWORD、可选 ANTHROPIC_API_KEY
-docker compose up -d          # 拉取 ruoji6/artex 镜像 + postgres
+docker compose up -d          # 拉取 ghcr.io/tianba777/artex-lonehero 镜像 + postgres
 # → http://localhost:8787
 ```
 
 镜像已含常用工具（ripgrep/curl/vim/npm/nmap…）；`./skills` 与 `./data` 以绑定挂载持久化。
 
-`.env` 中默认 `ARTEX_IMAGE=ruoji6/artex`，`ARTEX_TAG=latest` 使用最新镜像，也可固定为 `v0.3.17`（完整镜像地址 `ruoji6/artex:v0.3.17`）。镜像支持 `linux/amd64` 和 `linux/arm64`，Docker 会自动选择与宿主机匹配的架构，ARM64 Kali 无需自行编译。初次部署请修改 `POSTGRES_PASSWORD`；运行服务无需配置 Docker Hub 发布 Token。
+`.env` 中默认 `ARTEX_IMAGE=ghcr.io/tianba777/artex-lonehero`，`ARTEX_TAG=latest` 使用最新镜像，也可固定为 `v0.3.17`（完整镜像地址 `ghcr.io/tianba777/artex-lonehero:v0.3.17`）。镜像支持 `linux/amd64` 和 `linux/arm64`，Docker 会自动选择与宿主机匹配的架构，ARM64 Kali 无需自行编译。初次部署请修改 `POSTGRES_PASSWORD`；私有镜像需先以有权限的账号登录 GHCR。首次发行前需按整合说明自行构建；服务端检查私有 Release 需要在运行环境提供只读 ARTEX_UPDATE_TOKEN。
 
 远程 MCP 可在系统设置中选择 `http`（Streamable HTTP）或 `sse`（旧版 SSE）。
 旧版 SSE 服务通常使用 `GET /sse` 建立事件流，再通过服务返回的
@@ -154,7 +154,7 @@ docker compose up -d          # 拉取 ruoji6/artex 镜像 + postgres
 
 ### 方式三：下载预编译二进制（Releases）
 
-到本仓库的 [Releases](https://github.com/RuoJi6/ARTEX/releases) 下载对应平台的 zip，解压后得到 `artex` + `start.sh`（Windows 为 `start.bat`）+ `skills/` + `config.example.json`。Linux ARM64（包括 ARM64 Kali）选择 `linux-arm64`，x86_64 选择 `linux-amd64`：
+到本仓库的 [Releases](https://github.com/tianba777/ARTEX-LoneHero/releases) 下载对应平台的 zip，解压后得到 `artex` + `start.sh`（Windows 为 `start.bat`）+ `skills/` + `config.example.json`。Linux ARM64（包括 ARM64 Kali）选择 `linux-arm64`，x86_64 选择 `linux-amd64`：
 
 ```bash
 cp config.example.json config.json   # 填好 database 连接
@@ -170,7 +170,7 @@ cp config.example.json config.json   # 填好 database 连接
 # 1) 前端静态导出
 cd web && npm ci && npm run build:static && cd ..
 # 2) 拷进内嵌目录
-cp -r web/out server/webui/dist
+mkdir -p server/webui/dist && cp -R web/out/. server/webui/dist/
 # 3) 编译（-tags embedui 才内嵌前端）
 CGO_ENABLED=0 go build -tags embedui -o artex ./cmd/artex
 ./start.sh
@@ -202,7 +202,7 @@ ARTEX_TARGETS=linux/amd64,windows/amd64 ./build.sh --release
 
 在 **系统配置** 页（侧边栏「系统配置」→ `/system/settings`）的**版本与更新**卡片里，可以直接检查并安装新版本，无需登录服务器。
 
-本仓库构建的程序固定从 `RuoJi6/ARTEX` 的最新正式 GitHub Release 检查更新，跳过草稿和预发布版本。旧版官方程序仍指向原作者仓库，因此首次切换必须手动安装本仓库构建的程序；以后发布更高的三段式版本即可通过页面升级。仅推送 main 或 Git 标签但未发布 Release，不会产生可在线安装的新版本。
+本仓库构建的程序固定从 `tianba777/ARTEX-LoneHero` 的最新正式 GitHub Release 检查更新，跳过草稿和预发布版本。旧版官方程序仍指向原作者仓库，因此首次切换必须手动安装本仓库构建的程序；以后发布更高的三段式版本即可通过页面升级。仅推送 main 或 Git 标签但未发布 Release，不会产生可在线安装的新版本。
 
 点「更新」后：下载当前平台的发布包 → 比对 Release 的 `SHA256SUMS` → 用 `-h` 冒烟测试新二进制 → 暂存为 `artex.new` → 程序退出，由 `start.sh` / `start.bat` 重新拉起并完成换装。页面会自动等到新版本上线后刷新。
 
@@ -226,7 +226,7 @@ git push origin v0.3.17
 
 工作流固定标签对应的提交，用 Node.js 22 导出前端，按照 `go.mod` 指定的 Go 版本编译内嵌前端的五个平台程序，并生成 ZIP 与 `SHA256SUMS`。AMD64 和 ARM64 镜像分别在 GitHub 原生 runner 上构建，连接临时 PostgreSQL 验证程序启动、版本和内嵌前端；两种架构都通过后发布多架构镜像的版本标签与 `latest`。镜像发布成功后上传完整 ZIP 和校验文件，最后公开 Release。已公开的同版本不允许覆盖，应发布新标签。
 
-维护者需在本仓库 Settings → Secrets and variables → Actions 中配置变量 `ARTEX_DOCKER_IMAGE`（Docker Hub 用户名/镜像名）和 Secrets `DOCKERHUB_USERNAME`、`DOCKERHUB_TOKEN`（有镜像推送权限）。程序包通过 GitHub 自带 `GITHUB_TOKEN` 上传，镜像通过上述凭据推送到 Docker Hub。凭据只供工作流登录使用，不写入源码或镜像。镜像地址同时记录在 `.env.example` 和 Compose 默认值中。
+发布工作流通过仓库自带 `GITHUB_TOKEN` 上传程序包并推送 GHCR 镜像，已声明所需权限，无需 Docker Hub 凭据。镜像地址同时记录在 `.env.example` 和 Compose 默认值中。Demo 默认关闭；需另行配置并显式启用。
 
 ### 已有 Docker 部署迁移到本仓库镜像
 
@@ -248,7 +248,7 @@ curl --fail http://127.0.0.1:8787/api/health
 docker compose logs --tail=50 artex
 ```
 
-继续使用原部署目录和 Compose 项目名称，确保 `./data`、`./skills` 和 PostgreSQL 数据卷仍指向原数据。迁移后程序从 `RuoJi6/ARTEX` 检查在线更新；后续可用页面更新程序或上述命令更新整个镜像。
+继续使用原部署目录和 Compose 项目名称，确保 `./data`、`./skills` 和 PostgreSQL 数据卷仍指向原数据。迁移后程序从 `tianba777/ARTEX-LoneHero` 检查在线更新；后续可用页面更新程序或上述命令更新整个镜像。
 
 首次迁移已有 Docker 部署时，将已校验的新 ARM64 ZIP 解压到宿主机，备份原程序，然后只替换已有容器中的 `/app/artex`。例如现有容器名为 `artex-artex-1`：
 
@@ -290,7 +290,7 @@ docker image prune -f          # 清理旧镜像（可选）
 
 ### 方式四：预编译二进制（Releases）
 
-到 [Releases](https://github.com/RuoJi6/ARTEX/releases) 下载新版本 zip，停掉旧进程后覆盖 `artex` 与 `skills/`（保留你的 `config.json` 与 `data/`），重启即可：
+到 [Releases](https://github.com/tianba777/ARTEX-LoneHero/releases) 下载新版本 zip，停掉旧进程后覆盖 `artex` 与 `skills/`（保留你的 `config.json` 与 `data/`），重启即可：
 
 ```bash
 cp -r <解压目录>/skills ./ && cp <解压目录>/artex ./
@@ -302,7 +302,7 @@ cp -r <解压目录>/skills ./ && cp <解压目录>/artex ./
 ```bash
 git pull
 cd web && npm ci && npm run build:static && cd ..
-cp -r web/out server/webui/dist
+mkdir -p server/webui/dist && cp -R web/out/. server/webui/dist/
 CGO_ENABLED=0 go build -tags embedui -o artex ./cmd/artex
 # 重启 ./start.sh
 ```
