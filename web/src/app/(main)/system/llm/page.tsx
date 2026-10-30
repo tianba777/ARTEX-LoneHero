@@ -56,6 +56,10 @@ const MAX_TOKENS_FIELD_HINTS: Record<string, string> = {
   anthropic: "仅 openai 格式可选。Anthropic 的字段名固定为 max_tokens。",
   "openai-responses": "仅 openai 格式可选。Responses API 的字段名固定为 max_output_tokens。",
 };
+// LLM profile formats. The default in the create form is "anthropic"; "ollama" is the
+// keyless local-server format (base URL defaults to http://127.0.0.1:11434/v1).
+type ProfileFormat = "anthropic" | "openai" | "openai-responses" | "ollama";
+const OLLAMA_DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1";
 const EFFORT_LEVELS: { value: string; label: string }[] = [
   { value: NONE, label: "不发送（默认）" },
   { value: "low", label: "low" },
@@ -75,7 +79,7 @@ function cooldownText(secs: number) {
 // 其余状态来自轮询的熔断记录（轮询关着时不会产生新记录，此时「正常」= 没有已知故障）。
 type Health = { label: string; cls: string; hint?: string };
 function healthOf(p: LLMProfile, m?: LLMPoolMember): Health {
-  if (!p.api_key_hint) {
+  if (!p.api_key_hint && p.format !== "ollama") {
     return {
       label: "未配置 Key",
       cls: "border-muted-foreground/40 text-muted-foreground",
@@ -311,7 +315,7 @@ function ProfileSheet({
 }) {
   const isNew = !profile;
   const [name, setName] = React.useState("");
-  const [format, setFormat] = React.useState<"anthropic" | "openai" | "openai-responses">("anthropic");
+  const [format, setFormat] = React.useState<ProfileFormat>("anthropic");
   const [model, setModel] = React.useState("");
   const [baseUrl, setBaseUrl] = React.useState("");
   const [proxy, setProxy] = React.useState("");
@@ -340,7 +344,11 @@ function ProfileSheet({
   React.useEffect(() => {
     if (!open) return;
     setName(profile?.name ?? "");
-    setFormat(profile?.format === "openai" || profile?.format === "openai-responses" ? profile.format : "anthropic");
+    setFormat(
+      profile?.format === "openai" || profile?.format === "openai-responses" || profile?.format === "ollama"
+        ? profile.format
+        : "anthropic",
+    );
     setModel(profile?.model ?? "");
     setBaseUrl(profile?.base_url ?? "");
     setProxy(profile?.proxy ?? "");
@@ -457,6 +465,13 @@ function ProfileSheet({
     }
   }
 
+  let keyPlaceholder = "sk-…";
+  if (format === "ollama") {
+    keyPlaceholder = "optional — a local Ollama server runs keyless";
+  } else if (keyHint) {
+    keyPlaceholder = `Set (${keyHint}); leave empty to keep it`;
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -500,6 +515,7 @@ function ProfileSheet({
                   <SelectItem value="anthropic">Anthropic</SelectItem>
                   <SelectItem value="openai">OpenAI (Chat Completions)</SelectItem>
                   <SelectItem value="openai-responses">OpenAI (Responses API)</SelectItem>
+                  <SelectItem value="ollama">Ollama (local, no key needed)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -511,7 +527,7 @@ function ProfileSheet({
               <Input
                 id="p-model"
                 className="font-mono"
-                placeholder="claude-opus-4-8"
+                placeholder={format === "ollama" ? "llama3.2" : "claude-opus-4-8"}
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
               />
@@ -557,7 +573,7 @@ function ProfileSheet({
             <Input
               id="p-base-url"
               className="font-mono"
-              placeholder="https://api.openai.com/v1"
+              placeholder={format === "ollama" ? OLLAMA_DEFAULT_BASE_URL : "https://api.openai.com/v1"}
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
             />
@@ -595,11 +611,13 @@ function ProfileSheet({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="p-api-key">API Key</Label>
+            <Label htmlFor="p-api-key">
+              {format === "ollama" ? "API Key (optional for Ollama)" : "API Key"}
+            </Label>
             <Input
               id="p-api-key"
               type="password"
-              placeholder={keyHint ? `已设置（${keyHint}），留空保持不变` : "sk-…"}
+              placeholder={keyPlaceholder}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />

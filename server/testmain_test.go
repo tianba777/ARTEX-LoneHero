@@ -13,6 +13,7 @@ import (
 // server test suite so cross-package DELETE cleanup races with db/agent
 // packages are avoided when running `go test ./...`.
 func TestMain(m *testing.M) {
+	db.SuffixTestDatabase("server")
 	dsn, _, err := db.DSN()
 	if err != nil {
 		os.Exit(m.Run())

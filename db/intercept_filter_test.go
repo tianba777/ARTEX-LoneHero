@@ -158,6 +158,9 @@ func TestInterceptApprovalFilters(t *testing.T) {
 	if err != nil || total != 1 || len(rows) != 1 || rows[0].ID != searchID {
 		t.Fatalf("id search total=%d rows=%d err=%v", total, len(rows), err)
 	}
+	if _, err := d.Exec(`UPDATE intercept_pending SET created_at='2099-01-01' WHERE id=$1`, searchID); err != nil {
+		t.Fatal(err)
+	}
 	rows, total, err = d.ListTaskInterceptsPage(scope, 1, 20, InterceptApprovalFilter{
 		Search: "example.test", CreatedFrom: "2099-01-01", CreatedTo: "2099-01-01",
 	})

@@ -33,7 +33,7 @@ func connectMCP(ctx context.Context, m *db.MCPServer) (mcpClient, error) {
 			return nil, fmt.Errorf("http 传输缺少 URL")
 		}
 		// env map doubles as HTTP headers (e.g. Authorization).
-		return mcphttp.New(ctx, m.Name, m.URL, jsonStrMap(m.Env), m.Insecure)
+		return mcphttp.New(ctx, m.Name, m.URL, jsonStrMap(m.Env), m.Insecure, m.TimeoutSeconds)
 	case "sse":
 		if m.URL == "" {
 			return nil, fmt.Errorf("sse 传输缺少 URL")
@@ -49,13 +49,16 @@ func connectMCP(ctx context.Context, m *db.MCPServer) (mcpClient, error) {
 func (s *Server) discoverAndCacheMCP(ctx context.Context, m *db.MCPServer) error {
 	cl, err := connectMCP(ctx, m)
 	if err != nil {
+		_ = s.m.pg.UpdateMCPHealth(m.ID, false, err.Error())
 		return err
 	}
 	defer cl.Close()
 	ts, err := cl.Tools(ctx)
 	if err != nil {
+		_ = s.m.pg.UpdateMCPHealth(m.ID, false, err.Error())
 		return err
 	}
+	_ = s.m.pg.UpdateMCPHealth(m.ID, true, "")
 	tools := make([]db.MCPTool, 0, len(ts))
 	for _, t := range ts {
 		tools = append(tools, db.MCPTool{Name: t.Name(), Description: t.Description()})

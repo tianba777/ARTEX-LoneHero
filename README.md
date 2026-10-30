@@ -1,3 +1,17 @@
+# ARTEX 孤胆英豪 · ARTEX Lone Hero
+
+基于 RuoJi6/ARTEX，选择性整合 BaaRai 的运行管理、人工接管、费用统计、经验沉淀及扩展工具。保留原有功能和上游同步路径。
+
+- 私有项目：tianba777/ARTEX-LoneHero
+- 新增功能入口：系统 → 孤胆英豪
+- [整合说明、默认行为与同步方法](integration/README.md)
+- [版本来源与移植记录](integration/SOURCES.json)
+- 默认发行镜像：ghcr.io/tianba777/artex-lonehero（需要先有本项目的成功发行）
+
+以下保留 RuoJi6 原始说明供对照；其中原仓库、镜像和 Demo 链接属于上游。实际部署、在线更新与发布采用上方本项目说明。
+
+---
+
 <div align="center">
 
 # ARTEX

@@ -25,9 +25,10 @@ func (s *Server) updateTaskMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxTaskMetadataRequestSize)
 	var request struct {
-		Name   *string `json:"name"`
-		Remark *string `json:"remark"`
-		Pinned *bool   `json:"pinned"`
+		PlanQuietMode *bool   `json:"plan_quiet_mode"`
+		Name          *string `json:"name"`
+		Remark        *string `json:"remark"`
+		Pinned        *bool   `json:"pinned"`
 	}
 	if err := decode(r, &request); err != nil {
 		var tooLarge *http.MaxBytesError
@@ -38,7 +39,7 @@ func (s *Server) updateTaskMetadata(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if request.Name == nil && request.Pinned == nil && request.Remark == nil {
+	if request.Name == nil && request.Pinned == nil && request.Remark == nil && request.PlanQuietMode == nil {
 		writeErr(w, http.StatusBadRequest, "至少需要提供 name、pinned 或 remark")
 		return
 	}
@@ -63,7 +64,7 @@ func (s *Server) updateTaskMetadata(w http.ResponseWriter, r *http.Request) {
 		}
 		request.Remark = &remark
 	}
-	task, err := s.m.UpdateTaskMetadata(taskID, db.TaskPatch{Name: request.Name, Pinned: request.Pinned, Remark: request.Remark})
+	task, err := s.m.UpdateTaskMetadata(taskID, db.TaskPatch{Name: request.Name, Pinned: request.Pinned, Remark: request.Remark, PlanQuietMode: request.PlanQuietMode})
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return

@@ -50,7 +50,8 @@ func nowStr() string { return time.Now().Format("2006-01-02 15:04:05 MST") }
 // default template, then to the raw default string — an agent never starts with a
 // half-rendered prompt. Callers append the code-owned tail (trafficTool / 中间产物
 // 输出规约) AFTER this, so those can't be edited away via the DB body.
-func renderSystem(agentKey, def string, vars any) string {
+func renderSystem(agentKey, def string, vars any) (result string) {
+	defer func() { result += loneHeroPromptTail(agentKey) }()
 	tmpl := def
 	if PromptOverride != nil {
 		if t, ok := PromptOverride(agentKey); ok && t != "" {

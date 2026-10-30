@@ -30,6 +30,7 @@ func rawString(raw json.RawMessage) string {
 
 // ---- Task (frontend "Task") ---- created_at as RFC3339, plus a derived status.
 type TaskDTO struct {
+	PlanQuietMode    bool                     `json:"plan_quiet_mode"`
 	DistinctFindings *db.FindingDistinctStats `json:"distinct_findings,omitempty"`
 
 	ID                 string             `json:"id"`
@@ -118,6 +119,7 @@ func taskDTO(t *Task, status string) TaskDTO {
 	}
 	profileIDs := append(make([]int64, 0, len(llmState.ProfileIDs)), llmState.ProfileIDs...)
 	return TaskDTO{
+		PlanQuietMode:      lifecycle.PlanQuietMode,
 		ID:                 t.ID,
 		ExplorationID:      t.ExpID,
 		Name:               lifecycle.Name,

@@ -11,6 +11,7 @@ import (
 // Initialize an explicitly configured fresh database before taking the same
 // suite lock as db, agent and server. Hold it on one pinned connection.
 func TestMain(m *testing.M) {
+	db.SuffixTestDatabase("evidence")
 	if os.Getenv("ARTEX_PG_DSN") == "" {
 		os.Exit(m.Run())
 	}

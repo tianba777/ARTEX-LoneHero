@@ -1,0 +1,38 @@
+name: toolbox-smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  toolbox:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: {go-version-file: go.mod}
+      - name: Build application
+        run: |
+          mkdir -p dist/${{ matrix.arch }}
+          CGO_ENABLED=0 go build -o dist/${{ matrix.arch }}/artex ./cmd/artex
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: lonehero:smoke
+          platforms: linux/${{ matrix.arch }}
+          cache-from: type=gha,scope=lonehero-toolbox-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=lonehero-toolbox-${{ matrix.arch }}
+      - name: Check bundled tools and Skills
+        run: |
+          docker run --rm --entrypoint /bin/sh lonehero:smoke -ec '
+            /app/artex -h
+            for tool in nuclei httpx subfinder katana ffuf dalfox sqlmap bbot nmap playwright-cli; do command -v "$tool"; done
+            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 8
+          '

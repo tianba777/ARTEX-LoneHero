@@ -32,6 +32,7 @@ type FormState = {
   url: string;
   env: string;
   insecure: boolean;
+  timeoutSeconds: string;
 };
 const emptyForm: FormState = {
   name: "",
@@ -41,6 +42,7 @@ const emptyForm: FormState = {
   url: "",
   env: "",
   insecure: false,
+  timeoutSeconds: "",
 };
 
 export default function MCPPage() {
@@ -117,6 +119,7 @@ export default function MCPPage() {
       url: s.url ?? "",
       env: envToText(s.env),
       insecure: s.insecure ?? false,
+      timeoutSeconds: s.timeout_seconds ? String(s.timeout_seconds) : "",
     });
     setTab("config");
     setOpen(true);
@@ -158,6 +161,9 @@ export default function MCPPage() {
               args: [] as string[],
               env: parseEnv(form.env), // 远程模式下 env 即请求头
               insecure: form.insecure,
+              ...(Number.isFinite(Number(form.timeoutSeconds)) && Number(form.timeoutSeconds) > 0
+                ? { timeout_seconds: Number(form.timeoutSeconds) }
+                : {}),
             }
           : {
               transport: "stdio" as const,
@@ -306,6 +312,15 @@ export default function MCPPage() {
               />
               跳过 TLS 证书校验（自签证书）
             </label>
+            <Label htmlFor="m-timeout">Request timeout (seconds, default 120)</Label>
+            <Input
+              id="m-timeout"
+              type="number"
+              min={5}
+              placeholder="120"
+              value={form.timeoutSeconds}
+              onChange={(e) => setF({ timeoutSeconds: e.target.value })}
+            />
           </div>
         )}
         <div className="grid gap-2">
@@ -389,6 +404,19 @@ export default function MCPPage() {
                 <Badge variant="outline" className="uppercase">
                   {s.transport}
                 </Badge>
+                {s.last_connect_ok === false ? (
+                  <Badge variant="destructive" className="max-w-55 truncate font-normal" title={s.last_connect_err ?? "connect failed"}>
+                    down: {s.last_connect_err ? s.last_connect_err.slice(0, 60) : "connect failed"}
+                  </Badge>
+                ) : s.last_connect_ok === true ? (
+                  <Badge variant="secondary" className="font-normal">
+                    ok {s.last_connect_at ? new Date(s.last_connect_at).toLocaleTimeString() : ""}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground font-normal">
+                    not connected yet
+                  </Badge>
+                )}
                 <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <Switch
                     checked={s.enabled}

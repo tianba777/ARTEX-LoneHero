@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -13,7 +14,7 @@ import (
 
 // Repo 是发布源。写死而不是做成配置项：更新源可配等于给任何能改配置的人一条
 // 远程代码执行通道，对一个渗透测试平台来说这个口子开不得。
-const Repo = "RuoJi6/ARTEX"
+const Repo = "tianba777/ARTEX-LoneHero"
 
 // latestURL 是 GitHub 的"最新正式版"接口。它会自动跳过 prerelease 和 draft。
 const latestURL = "https://api.github.com/repos/" + Repo + "/releases/latest"
@@ -43,9 +44,28 @@ type Release struct {
 
 // Asset 是 Release 上挂的一个文件。
 type Asset struct {
-	Name string `json:"name"`
-	URL  string `json:"browser_download_url"`
-	Size int64  `json:"size"`
+	Name   string `json:"name"`
+	URL    string `json:"browser_download_url"`
+	APIURL string `json:"url"`
+	Size   int64  `json:"size"`
+}
+
+func authorizeUpdateRequest(req *http.Request) {
+	if req.URL.Scheme == "https" && req.URL.Hostname() == "api.github.com" && strings.HasPrefix(req.URL.Path, "/repos/"+Repo+"/") {
+		if token := strings.TrimSpace(os.Getenv("ARTEX_UPDATE_TOKEN")); token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+	}
+}
+
+func (a Asset) downloadURL() string {
+	if strings.TrimSpace(os.Getenv("ARTEX_UPDATE_TOKEN")) != "" && a.APIURL != "" {
+		u, err := url.Parse(a.APIURL)
+		if err == nil && u.Scheme == "https" && u.Hostname() == "api.github.com" && strings.HasPrefix(u.Path, "/repos/"+Repo+"/releases/assets/") {
+			return a.APIURL
+		}
+	}
+	return a.URL
 }
 
 // ParseProxy validates an optional update proxy without including credentials in errors.
@@ -96,6 +116,7 @@ func NewClient(proxy string) (*http.Client, error) {
 		Transport: tr,
 		Timeout:   30 * time.Minute, // 下载整包，不能按请求级超时卡死
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			req.Header.Del("Authorization")
 			if len(via) >= 10 {
 				return fmt.Errorf("重定向次数过多")
 			}
@@ -126,6 +147,7 @@ func FetchLatest(ctx context.Context, c *http.Client) (*Release, error) {
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "artex-selfupdate")
+	authorizeUpdateRequest(req)
 
 	resp, err := c.Do(req)
 	if err != nil {

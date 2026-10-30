@@ -21,6 +21,7 @@ export function parseWorkerCountInput(value: string): number | null {
 }
 
 export interface Task {
+  plan_quiet_mode?: boolean;
   distinct_findings?: FindingDistinctStats;
   id: string;
   remark?: string;
@@ -882,6 +883,8 @@ export interface ProfileUsage {
   output_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
+  // EUR cost from the profile's stored prices; absent when the profile has no price set.
+  cost_eur?: number | null;
 }
 
 // One (profile, UTC day) token bucket for the dashboard's daily chart (new source).
@@ -1108,7 +1111,7 @@ export interface NotificationDelivery {
 export interface LLMProfile {
   id: string;
   name: string;
-  format: "openai" | "anthropic" | "openai-responses";
+  format: "openai" | "anthropic" | "openai-responses" | "ollama";
   base_url?: string;
   proxy?: string;
   model: string;
@@ -1127,6 +1130,11 @@ export interface LLMProfile {
   pool_exclude?: boolean;
   // true（默认）= 流式(SSE) | false = 真·非流式(stream:false，一次性返回)。
   streaming?: boolean;
+  // Cost ledger: EUR per 1M tokens (0/absent = unset).
+  price_input_per_m?: number;
+  price_output_per_m?: number;
+  price_cache_read_per_m?: number;
+  price_cache_write_per_m?: number;
   // 单次回复的输出上限(token)。0 = 不发送该字段，由服务端默认值决定。
   // 注意与 context_window_k 区分：后者是模型总容量，只在本地用于压缩阈值。
   max_tokens?: number;
@@ -1260,6 +1268,10 @@ export interface MCPServer {
   url?: string;
   enabled: boolean;
   insecure?: boolean; // http: skip TLS cert verification (self-signed servers)
+  timeout_seconds?: number; // http/sse: per-request timeout in seconds (default 120)
+  last_connect_at?: string | null; // last connect attempt (ISO time)
+  last_connect_ok?: boolean | null; // outcome of the last connect attempt
+  last_connect_err?: string | null; // failure reason when last_connect_ok is false
   tools?: string[]; // mcp_tools_cache (names only, for the count)
 }
 
@@ -1391,6 +1403,25 @@ export interface AssetInterceptRuleInput {
   note: string;
   enabled: boolean;
 }
+
+// Task credentials (#3): per-task test accounts. An empty password on a user-declared
+// entry means "agent generates": the agent registers that account and records it back.
+export type TaskCredentialInput = {
+  domain: string;
+  username: string;
+  password: string;
+  note?: string;
+};
+
+export type TaskCredential = TaskCredentialInput & {
+  id: number;
+  task_id: number;
+  source: "user" | "agent";
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 
 export interface AssetInterceptRule {
   id: number;

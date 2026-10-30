@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS llm_profiles (
     id               BIGSERIAL PRIMARY KEY,
     name             TEXT NOT NULL UNIQUE,
-    format           TEXT NOT NULL CHECK (format IN ('openai','anthropic','openai-responses')),
+    format           TEXT NOT NULL CHECK (format IN ('openai','anthropic','openai-responses','ollama')),
     base_url         TEXT,
     proxy            TEXT,
     model            TEXT NOT NULL,
@@ -419,7 +419,7 @@ ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS streaming    BOOLEAN NOT NULL 
 -- 每次启动执行,幂等:先删旧 CHECK 再建含三值的新 CHECK。
 ALTER TABLE llm_profiles DROP CONSTRAINT IF EXISTS llm_profiles_format_check;
 ALTER TABLE llm_profiles ADD  CONSTRAINT llm_profiles_format_check
-    CHECK (format IN ('openai','anthropic','openai-responses'));
+    CHECK (format IN ('openai','anthropic','openai-responses','ollama'));
 
 -- 输出上限及其字段名；补旧库。默认 0 / '' = 不发送上限、沿用 max_tokens 字段名，
 -- 旧配置行为完全不变。
@@ -523,6 +523,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     parent_ref     TEXT,
     timeout_seconds INTEGER NOT NULL DEFAULT 0,
     plan_heartbeat_seconds INTEGER NOT NULL DEFAULT 300,
+    plan_quiet_mode BOOLEAN NOT NULL DEFAULT false,
     coverage_enabled BOOLEAN NOT NULL DEFAULT true,
     worker_count   INTEGER NOT NULL DEFAULT 0, -- 0=用全局默认 workers
     pinned_at      TIMESTAMPTZ,
@@ -543,7 +544,8 @@ CREATE TRIGGER trg_tasks_upd BEFORE UPDATE ON tasks
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- planner 心跳触发间隔(秒);补旧库。默认 300s(5min)。见 docs/planner-trigger-impl-plan.md
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_heartbeat_seconds INTEGER NOT NULL DEFAULT 300;
--- 并发上限挂起态;补旧库。true=因并发上限排队、等待空位自动启动。
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS plan_quiet_mode BOOLEAN NOT NULL DEFAULT false;
+-- Concurrency-limit hold state; backfills old databases. true=queued due to the concurrency limit, auto-starts when a slot frees up.
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS queued BOOLEAN NOT NULL DEFAULT false;
 -- 资产覆盖度功能开关;补旧库。true(默认)=计算/展示测试覆盖度、自动累积测试范围、
 -- 给 agent 开放 add_task_scope/list_untested_assets;false=全部关闭(见 task_scope.go)。
@@ -863,6 +865,15 @@ ALTER TABLE mcp_servers ADD CONSTRAINT mcp_servers_transport_check
     CHECK (transport IN ('stdio','http','sse'));
 -- 旧库补列(schema.sql 每次启动都会 Exec)。
 ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS insecure BOOLEAN NOT NULL DEFAULT false;
+-- Per-server request timeout for remote MCP transports, in seconds (default 120). Analysis
+-- servers whose tools legitimately run minutes (e.g. binary reverse engineering) need room
+-- beyond the default without forcing every other server to wait as long.
+ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS timeout_seconds INT NOT NULL DEFAULT 120;
+-- Connect health: updated on every connect attempt (discovery, refresh, per-agent-run
+-- wiring). NULL = never attempted. The WHERE-deduped update avoids write amplification.
+ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS last_connect_at TIMESTAMPTZ;
+ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS last_connect_ok BOOLEAN;
+ALTER TABLE mcp_servers ADD COLUMN IF NOT EXISTS last_connect_err TEXT;
 DROP TRIGGER IF EXISTS trg_mcp_upd ON mcp_servers;
 CREATE TRIGGER trg_mcp_upd BEFORE UPDATE ON mcp_servers
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -1631,3 +1642,58 @@ CREATE INDEX IF NOT EXISTS idx_task_intelligence_assets ON task_intelligence USI
 
 -- Optional derived credential presentation; raw intelligence remains authoritative.
 ALTER TABLE task_intelligence ADD COLUMN IF NOT EXISTS credential_analysis JSONB;
+
+-- Cost ledger (#70): optional per-profile pricing, EUR per 1M tokens. NULL/0 = unset;
+-- usage aggregations compute cost only when at least one price is set.
+ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS price_input_per_m NUMERIC(12,6);
+ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS price_output_per_m NUMERIC(12,6);
+ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS price_cache_read_per_m NUMERIC(12,6);
+ALTER TABLE llm_profiles ADD COLUMN IF NOT EXISTS price_cache_write_per_m NUMERIC(12,6);
+
+-- =====================================================================
+-- RSI lesson library (shadow mode)
+-- Deterministic, evidence-gated lessons extracted from closed tasks. A
+-- lesson exists only when it has a cue, an action, and at least one
+-- evidence row; support is the number of distinct evidence sources, so
+-- re-running extraction is idempotent. Pattern from harness2 (Google
+-- Research, Apache-2.0, arXiv 2610.14224): no lesson without evidence.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS rsi_lessons (
+    id          BIGSERIAL PRIMARY KEY,
+    dedupe_key  TEXT NOT NULL UNIQUE,
+    -- positive = a confirmed outcome worth reusing; negative = do not repeat;
+    -- caution = recheck before reporting (version or retest sensitive).
+    kind        TEXT NOT NULL CHECK (kind IN ('positive','negative','caution')),
+    cue         TEXT NOT NULL,
+    action      TEXT NOT NULL,
+    category_id BIGINT REFERENCES task_categories(id) ON DELETE SET NULL,
+    company_id  BIGINT REFERENCES companies(id) ON DELETE SET NULL,
+    status      TEXT NOT NULL DEFAULT 'candidate'
+                CHECK (status IN ('candidate','adopted','retired')),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_rsi_lessons_scope ON rsi_lessons(company_id, category_id, status);
+CREATE INDEX IF NOT EXISTS idx_rsi_lessons_kind  ON rsi_lessons(kind, updated_at DESC);
+
+-- One row per (lesson, source). The primary key makes extraction idempotent:
+-- a second run for the same task adds nothing and cannot inflate support.
+CREATE TABLE IF NOT EXISTS rsi_lesson_evidence (
+    lesson_id   BIGINT NOT NULL REFERENCES rsi_lessons(id) ON DELETE CASCADE,
+    source_kind TEXT NOT NULL,
+    source_id   BIGINT NOT NULL,
+    detail      TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (lesson_id, source_kind, source_id)
+);
+
+-- What was shown to which task, and in which mode (shadow = logged but not
+-- injected; inject = appended to the planner/worker system prompt).
+CREATE TABLE IF NOT EXISTS rsi_lesson_usage (
+    lesson_id BIGINT NOT NULL REFERENCES rsi_lessons(id) ON DELETE CASCADE,
+    task_id   BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    mode      TEXT NOT NULL CHECK (mode IN ('shadow','inject')),
+    shown_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (lesson_id, task_id, mode)
+);
+
+ALTER TABLE rsi_lessons ADD COLUMN IF NOT EXISTS origin_task_id BIGINT;

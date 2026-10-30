@@ -244,6 +244,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string, keyDi
 			}
 			return a.TaskTimeoutWrapupMaxTurns, true
 		}
+		agent.LoneHeroGuidanceEnabled = func() bool { return s.loneHeroOptions().QualityGuidance }
 		wireAgentAugment(m.pg, s.skillDir, s.hostTools) // 可见 skills/MCP + 流量/编排 host 工具装配进 agent 工具集
 		domainReg := buildDomainReg(m.Assets())
 		wireTools(m.pg, domainReg) // 内置工具表：按 agent 过滤 + 覆盖描述/schema + 注入默认值
@@ -372,7 +373,8 @@ func (s *Server) loadLLMConfig() (agent.Config, bool) {
 	cfg.MaxTokens, cfg.MaxTokensField = p.MaxTokens, p.MaxTokensField
 	cfg.SessionHeaderKey = p.SessionHeaderKey
 	s.applyProfileRetry(&cfg, p)
-	if cfg.APIKey == "" {
+	// Ollama profiles run keyless (local server); the other formats need a key.
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		return cfg, false
 	}
 	s.cfgMu.Lock()
@@ -528,7 +530,8 @@ func (s *Server) applyLLM(cfg agent.Config) error {
 }
 
 // loadProfileConfig builds an agent.Config from a specific profile id (with its key).
-// ok=false when the profile is missing or has no api key.
+// ok=false when the profile is missing or unusable (no api key for the key-requiring
+// formats).
 func (s *Server) loadProfileConfig(id int64) (agent.Config, bool) {
 	p, err := s.m.pg.ProfileByID(id)
 	if err != nil || p == nil {
@@ -543,7 +546,7 @@ func (s *Server) loadProfileConfig(id int64) (agent.Config, bool) {
 	cfg.MaxTokens, cfg.MaxTokensField = p.MaxTokens, p.MaxTokensField
 	cfg.SessionHeaderKey = p.SessionHeaderKey
 	s.applyProfileRetry(&cfg, p)
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		return cfg, false
 	}
 	return cfg, true
@@ -708,6 +711,13 @@ func (s *Server) chatAgentRef() *agent.ChatAgent {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/lonehero/settings", s.getLoneHeroOptions)
+	mux.HandleFunc("PUT /api/lonehero/prices/{pid}", s.saveLoneHeroPrices)
+	mux.HandleFunc("GET /api/skills/gaps", s.skillGaps)
+	mux.HandleFunc("GET /api/skill-gaps", s.skillGaps)
+	mux.HandleFunc("PUT /api/lonehero/settings", s.saveLoneHeroOptions)
+	mux.HandleFunc("GET /api/lonehero/lessons", s.listLoneHeroLessons)
+	mux.HandleFunc("PATCH /api/lonehero/lessons/{lid}", s.updateLessonStatus)
 	s.registerSideRoutes(mux)
 
 	// Auth routes — exempt from JWT check (handled in requireAuth)
@@ -760,6 +770,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/task-templates/{id}", s.pgUpdateTaskTemplate)
 	mux.HandleFunc("DELETE /api/task-templates/{id}", s.pgDeleteTaskTemplate)
 	mux.HandleFunc("GET /api/tasks/{id}", s.getTask)
+	mux.HandleFunc("GET /api/tasks/{id}/outcome", s.taskOutcome)
+	mux.HandleFunc("GET /api/tasks/{id}/lessons", s.taskLessons)
+	mux.HandleFunc("POST /api/tasks/{id}/lessons/extract", s.extractTaskLessons)
 	mux.HandleFunc("PATCH /api/tasks/{id}", s.updateTaskMetadata)
 	mux.HandleFunc("PATCH /api/tasks/{id}/category", s.updateTaskCategory)
 	// 任务级资产拦截/允许规则
@@ -888,6 +901,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/traffic/all", s.deleteAllTraffic)
 	mux.HandleFunc("GET /api/traffic/exchange", s.getTrafficExchange)
 	mux.HandleFunc("GET /api/traffic/blob", s.getTrafficBlob)
+	mux.HandleFunc("POST /api/traffic/ingest", s.ingestTraffic)
 	mux.HandleFunc("GET /api/commands", s.pgListCommands)
 	mux.HandleFunc("GET /api/commands/stats", s.pgToolStats) // 按工具聚合调用次数
 	mux.HandleFunc("GET /api/llm/records", s.pgListLLMRecords)
@@ -1186,6 +1200,29 @@ func (s *Server) listTasks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"tasks": dtos, "active": active})
 }
 
+// applyTaskMetrics fills the aggregate DTO fields (tokens, goal progress,
+// running intents, findings, last activity) from the list-metrics query so the
+// detail and list endpoints report identical numbers. A zero metric leaves the
+// DTO zeroed, which is why callers log the query error instead of assuming it.
+func (s *Server) applyTaskMetrics(dto *TaskDTO, t *Task, metric db.TaskListMetrics) {
+	dto.Tokens = tokenTotalDTO(metric.Tokens)
+	// prefer the live in-memory heartbeat (fresher) and fall back to the
+	// persisted max activity time (survives restarts) for run-duration display.
+	dto.LastActivity = metric.LastActivity
+	if live := s.engine.LastActivity(t.ID); live > dto.LastActivity {
+		dto.LastActivity = live
+	}
+	dto.GoalsTotal = metric.Goals.Total
+	dto.GoalsMet = metric.Goals.Met
+	dto.InFlight = metric.RunningIntents
+	dto.Findings = FindingSeverityDTO{
+		Critical: metric.Findings.Critical,
+		High:     metric.Findings.High,
+		Medium:   metric.Findings.Medium,
+		Low:      metric.Findings.Low,
+	}
+}
+
 func (s *Server) resolvedTaskStatus(t *Task) string {
 	if t == nil {
 		return "created"
@@ -1450,12 +1487,13 @@ func (s *Server) setLLM(w http.ResponseWriter, r *http.Request) {
 		}
 		cfg.ContextWindowK = k
 	}
-	if cfg.APIKey == "" {
+	// Keyless formats (Ollama) need no key; the others keep/require one.
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		s.cfgMu.Lock()
 		cfg.APIKey = s.llmCfg.APIKey // keep existing key if not re-entered
 		s.cfgMu.Unlock()
 	}
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		writeErr(w, 400, "api_key required")
 		return
 	}
@@ -1499,6 +1537,41 @@ func (s *Server) testLLM(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, err.Error())
 		return
 	}
+	// A stored profile must be tested AS STORED: the list-view test button
+	// sends only profile_id, and ConfigFrom's defaults for an empty
+	// provider/base_url point at the canonical provider endpoint, sending this
+	// profile's key to the wrong host (the stored-key 401s). Fill whatever the
+	// form left empty from the row first; explicit form values still win.
+	var stored *db.LLMProfile
+	if req.ProfileID != nil {
+		if p, err := s.m.pg.ProfileByID(*req.ProfileID); err == nil && p != nil {
+			stored = p
+		}
+	}
+	if stored != nil {
+		if strings.TrimSpace(req.Provider) == "" {
+			req.Provider = stored.Format
+		}
+		if strings.TrimSpace(req.Model) == "" {
+			req.Model = stored.Model
+		}
+		if strings.TrimSpace(req.BaseURL) == "" {
+			req.BaseURL = stored.BaseURL
+		}
+		if strings.TrimSpace(req.Proxy) == "" {
+			req.Proxy = stored.Proxy
+		}
+		if req.Streaming == nil {
+			st := stored.Streaming
+			req.Streaming = &st
+		}
+		if strings.TrimSpace(req.ThinkingType) == "" {
+			req.ThinkingType = stored.ThinkingType
+		}
+		if strings.TrimSpace(req.ReasoningEffort) == "" {
+			req.ReasoningEffort = stored.ReasoningEffort
+		}
+	}
 	cfg := agent.ConfigFrom(req.Provider, req.Model, req.BaseURL, req.APIKey, req.Proxy)
 	// mirror production: send the SAME thinking params so a provider that rejects the
 	// reasoning_effort/thinking field fails the test too (no false "test ok, run 400").
@@ -1518,7 +1591,7 @@ func (s *Server) testLLM(w http.ResponseWriter, r *http.Request) {
 	// 会话头名同理：表单未带时用已存 profile 的值兜底。
 	if req.ProfileID != nil && (cfg.APIKey == "" || cfg.SessionHeaderKey == "") {
 		if p, err := s.m.pg.ProfileByID(*req.ProfileID); err == nil && p != nil {
-			if cfg.APIKey == "" {
+			if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 				cfg.APIKey = p.APIKey
 			}
 			if cfg.SessionHeaderKey == "" {
@@ -1526,12 +1599,12 @@ func (s *Server) testLLM(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		s.cfgMu.Lock()
 		cfg.APIKey = s.llmCfg.APIKey
 		s.cfgMu.Unlock()
 	}
-	if cfg.APIKey == "" {
+	if cfg.APIKey == "" && cfg.NeedsAPIKey() {
 		writeJSON(w, 200, map[string]any{"ok": false, "error": "未提供 API Key"})
 		return
 	}
@@ -1562,6 +1635,7 @@ func truncateReply(s string) string {
 }
 
 type createTaskReq struct {
+	PlanQuietMode        *bool            `json:"plan_quiet_mode,omitempty"`
 	Schedule             *scheduleRequest `json:"schedule,omitempty"`
 	Name                 string           `json:"name,omitempty"` // 可选任务名称;省略/空=未命名
 	CategoryID           *int64           `json:"category_id,omitempty"`
@@ -1594,6 +1668,10 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		req.LLMProfileIDs = []int64{*req.LLMProfileID}
 	}
 	if err := s.validateTaskProfileIDs(req.LLMProfileIDs); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	if err := s.checkLoneHeroGoal(req.Goal); err != nil {
 		writeErr(w, 400, err.Error())
 		return
 	}
@@ -1657,7 +1735,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		Schedule: schedule,
 		Name:     strings.TrimSpace(req.Name), CategoryID: req.CategoryID,
 		SourceTaskIDs: sourceIDs, CompanyIDs: req.CompanyIDs, LLMProfileIDs: req.LLMProfileIDs,
-		TimeoutSeconds: req.TimeoutSeconds, PlanHeartbeatSeconds: req.PlanHeartbeatSeconds,
+		TimeoutSeconds: req.TimeoutSeconds, PlanHeartbeatSeconds: req.PlanHeartbeatSeconds, PlanQuietMode: req.PlanQuietMode,
 		CoverageEnabled: req.CoverageEnabled,
 		Remark:          remark,
 		WorkerCount:     req.WorkerCount,
@@ -1884,6 +1962,11 @@ func (s *Server) getTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dto := taskDTO(t, s.resolvedTaskStatus(t))
+	metrics, err := s.m.PG().TaskListMetricsAll()
+	if err != nil {
+		log.Printf("[tasks] detail metrics query failed for %s — metrics zeroed: %v", t.ID, err)
+	}
+	s.applyTaskMetrics(&dto, t, metrics[t.ExpID])
 	archiveBlockers, _ := s.m.PG().TaskArchiveBlockers()
 	applyTaskArchiveBlocker(&dto, archiveBlockers)
 	writeJSON(w, 200, dto)

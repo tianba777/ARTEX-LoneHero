@@ -15,11 +15,14 @@ services:
     restart: unless-stopped
 
   artex:
-    image: ${ARTEX_IMAGE:-ruoji6/artex}:${ARTEX_TAG:-latest}
+    build:
+      context: .
+    image: ${ARTEX_IMAGE:-ghcr.io/tianba777/artex-lonehero}:${ARTEX_TAG:-latest}
     depends_on:
       postgres:
         condition: service_healthy
     environment:
+      ARTEX_UPDATE_TOKEN: ${ARTEX_UPDATE_TOKEN:-}
       TZ: Asia/Shanghai
       ARTEX_PG_DSN: postgres://${POSTGRES_USER:-artex}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-artex}?sslmode=disable
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

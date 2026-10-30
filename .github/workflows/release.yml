@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
@@ -27,14 +28,14 @@ jobs:
         id: version
         env:
           RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-          ARTEX_DOCKER_IMAGE: ${{ vars.ARTEX_DOCKER_IMAGE }}
+          ARTEX_DOCKER_IMAGE: ghcr.io/tianba777/artex-lonehero
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
             echo "正式版本必须是 v主版本.次版本.修订号，例如 v0.3.15" >&2
             exit 1
           fi
-          if [[ ! "$ARTEX_DOCKER_IMAGE" =~ ^[a-z0-9][a-z0-9_-]*/[a-z0-9]+([._-][a-z0-9]+)*$ ]]; then
-            echo "请先配置 Actions 变量 ARTEX_DOCKER_IMAGE，格式为 Docker Hub 用户名/镜像名" >&2
+          if [[ ! "$ARTEX_DOCKER_IMAGE" =~ ^ghcr\.io/[a-z0-9][a-z0-9_-]*/[a-z0-9]+([._-][a-z0-9]+)*$ ]]; then
+            echo "请先配置 Actions 变量 ARTEX_DOCKER_IMAGE，格式为 GHCR 用户名/镜像名" >&2
             exit 1
           fi
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
@@ -144,7 +145,7 @@ jobs:
           done
           sha256sum *.zip > SHA256SUMS
           sha256sum --check SHA256SUMS
-      - name: Replace release only when the tag moved to a new commit
+      - name: Refuse replacement of a published release
         env:
           RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
         run: |
@@ -156,8 +157,8 @@ jobs:
                 echo "该版本已发布且已指向当前提交，拒绝重复发布" >&2
                 exit 1
               fi
-              echo "标签已移动到新提交，删除旧 Release 后重新创建 $RELEASE_TAG"
-              gh release delete "$RELEASE_TAG" --yes
+              echo "拒绝覆盖已发布版本；请创建更高的新版本标签" >&2
+              exit 1
             fi
           elif ! grep -qi 'release not found\|HTTP 404' /tmp/artex-release.err; then
             cat /tmp/artex-release.err >&2
@@ -174,7 +175,7 @@ jobs:
             dist/SHA256SUMS
           generate_release_notes: true
           body: |
-            Docker Hub 镜像：`${{ vars.ARTEX_DOCKER_IMAGE }}:${{ needs.prepare.outputs.tag }}`，同时提供 `latest`。
+            GHCR 镜像：`ghcr.io/tianba777/artex-lonehero:${{ needs.prepare.outputs.tag }}`，同时提供 `latest`。
             支持 Linux AMD64 / ARM64，Docker 会自动选择宿主机架构。
             程序包提供 Linux、macOS 的 AMD64 / ARM64 及 Windows AMD64，并附 SHA256SUMS。
             部署和在线更新说明见本仓库 README。
@@ -184,6 +185,7 @@ jobs:
   # GITHUB_TOKEN 发布的 Release 不会再次触发 release: published 工作流。
   # 直接依赖发布 job，保证 ZIP、校验文件和镜像全部发布成功后才更新 Demo。
   demo:
+    if: ${{ vars.LONEHERO_DEMO_ENABLED == 'true' }}
     needs: [prepare, release]
     uses: ./.github/workflows/demo.yml
     with:
@@ -225,8 +227,9 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build image for native smoke test
         uses: docker/build-push-action@v6
         with:
@@ -255,7 +258,7 @@ jobs:
           context: .
           platforms: linux/${{ matrix.arch }}
           push: true
-          tags: ${{ vars.ARTEX_DOCKER_IMAGE }}:${{ needs.prepare.outputs.tag }}-${{ matrix.arch }}
+          tags: ghcr.io/tianba777/artex-lonehero:${{ needs.prepare.outputs.tag }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.prepare.outputs.tag }}
@@ -271,11 +274,12 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish multi-platform image
         env:
-          IMAGE: ${{ vars.ARTEX_DOCKER_IMAGE }}
+          IMAGE: ghcr.io/tianba777/artex-lonehero
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
           docker buildx imagetools create \

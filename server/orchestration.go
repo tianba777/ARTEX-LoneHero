@@ -517,7 +517,16 @@ func (s *Server) seedOrchestrationTools() {
 	}
 	for _, t := range s.platformTools() {
 		schema, _ := json.Marshal(t.InputSchema())
-		_ = s.m.PG().SeedTool(t.Name(), t.Description(), schema, autoAgents)
+		bindings := autoAgents
+		if t.Name() == "mcp_status" {
+			// health visibility is for the executors too, not just the platform agent
+			bindings = json.RawMessage(`["auto","worker","pentest"]`)
+		}
+		if t.Name() == "ask_operator" {
+			// operator input requests are an executor concern (captcha/OTP walls)
+			bindings = json.RawMessage(`["worker","pentest"]`)
+		}
+		_ = s.m.PG().SeedTool(t.Name(), t.Description(), schema, bindings)
 	}
 	s.refreshBuiltinToolSchemas()
 	s.seedAutoDefaultBindings()

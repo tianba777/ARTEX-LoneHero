@@ -1,3 +1,4 @@
+import type {HeroGap, HeroLesson, HeroOutcome, HeroPrices, LoneHeroOptions} from "./lonehero-types";
 // Real backend client. /api/* is proxied to the Go backend (next.config rewrites).
 // Returns the domain types in lib/types.ts. Shapes match the backend handlers;
 // a few fields the backend serializes differently (e.g. created_at as a unix int)
@@ -291,6 +292,16 @@ function schedulePayload(input: ScheduleInput) {
 }
 
 export const api = {
+  heroOptions: () => get<LoneHeroOptions>("/lonehero/settings"),
+  saveHeroOptions: (options: LoneHeroOptions) => put<LoneHeroOptions>("/lonehero/settings", options),
+  heroLessons: () => get<{lessons:HeroLesson[]}>("/lonehero/lessons"),
+  setHeroLessonStatus: (id:number,status:HeroLesson["status"]) => patch(`/lonehero/lessons/${id}`,{status}),
+  heroGaps: () => get<{gaps:HeroGap[]}>("/skill-gaps"),
+  heroOutcome: (id:string) => get<HeroOutcome>(`/tasks/${encodeURIComponent(id)}/outcome`),
+  extractHeroLessons: (id:string) => post(`/tasks/${encodeURIComponent(id)}/lessons/extract`),
+  setHeroTaskQuiet: (id:string,quiet:boolean) => patch(`/tasks/${encodeURIComponent(id)}`,{plan_quiet_mode:quiet}),
+  saveHeroPrices: (id:number,prices:HeroPrices) => put(`/lonehero/prices/${id}`,prices),
+
   // 后端应用版本号（release 时由 ldflags 注入，默认 "dev"）。
   health: () => get<{ ok: boolean; service: string; version: string }>("/health"),
   systemMetrics: () => get<SystemMetrics>("/system/metrics"),

@@ -1,0 +1,49 @@
+{
+  "project": "ARTEX 孤胆英豪",
+  "repository": "tianba777/ARTEX-LoneHero",
+  "license": "AGPL-3.0",
+  "upstream": {
+    "repository": "RuoJi6/ARTEX",
+    "commit": "4c5b4e9e79ede2bd2183b8a5bd932536d5245ff7",
+    "branch": "main",
+    "policy": "Preserve ancestry; ordinary merge on a review branch; never force-push or auto-deploy"
+  },
+  "donor": {
+    "repository": "BaaRai/ARTEX",
+    "commit": "7f8c7cbcae7324e823d8952371ae2013521cc711",
+    "delta_base": "e233c02",
+    "method": "Selective feature delta, reconciled against the RuoJi6 implementation",
+    "feature_commits": {
+      "mcp_timeout_and_health": ["24c8ea1", "28e6618"],
+      "operator_handoff": ["d54e468", "4b815d5"],
+      "quality_guidance": ["c1bebab", "2d8e357", "bb81979", "0226552", "2629140"],
+      "cost_estimates": ["67ff6ff", "c96c3ea"],
+      "outcomes_gaps_lessons": ["cf369de", "cbb6f66", "a8f3c2c"],
+      "quiet_planning": ["f57cf65", "9f03b8c"],
+      "failure_escalation_stagnation": ["b237fba"],
+      "toolbox": ["2fd6ed0", "b48c58d", "4c62b57"],
+      "benchmarks": ["86a4efc", "d2f4697", "19e929c", "58b221b", "67971ef", "89ece8e"],
+      "backup": ["2c8359f"],
+      "ollama": ["80a1ee9", "978f308"]
+    }
+  },
+  "integration_adjustments": [
+    "Preserve upstream scheduler, active-run clock, worker pools, credentials, evidence, proxy, self-update and user prompts",
+    "Quiet planning and consecutive-failure escalation default off",
+    "Candidate-only lessons by default; adoption required for injection; task/company scoping",
+    "Ignored or accepted risk is caution, not proof of a false positive",
+    "Subtract both cache-read and cache-write subsets when estimating fresh-input cost",
+    "Private self-updates use only the project's own release source",
+    "No import of other ARTEX forks"
+  ],
+  "excluded": [
+    "php2shell exploit scripts and skill",
+    "edr-bypass-re skill",
+    "refusal-posture probe",
+    "AI issue/PR reply bot",
+    "removal of upstream self-update",
+    "duplicate task credentials store",
+    "duplicate per-intent model rotation",
+    "unverified SDK replacement"
+  ]
+}

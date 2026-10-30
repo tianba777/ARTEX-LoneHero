@@ -1,0 +1,40 @@
+name: sync-ruoji6
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: sync-ruoji6
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+      - name: Merge on a review branch
+        id: merge
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          scripts/sync-upstream.sh
+          branch=$(git branch --show-current)
+          if [ "$branch" = main ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          git push origin "HEAD:refs/heads/$branch"
+      - name: Open review PR
+        if: steps.merge.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SYNC_BRANCH: ${{ steps.merge.outputs.branch }}
+        run: |
+          cat > /tmp/sync-body.md <<'BODY'
+          将 RuoJi6 的更新合并到独立分支，保留孤胆英豪的提交历史。
+
+          合并前需完成 CI、确认自更新来源仍指向本项目、验证已有数据及自定义提示词的兼容性。
+          BODY
+          gh pr create --draft --base main --head "$SYNC_BRANCH" --title '同步 RuoJi6 上游更新' --body-file /tmp/sync-body.md

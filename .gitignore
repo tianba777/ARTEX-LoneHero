@@ -60,3 +60,11 @@ Thumbs.db
 /bench/
 /Dockerfile.bench
 /Dockerfile.bench.v2
+
+# Lone Hero local build/test material
+/.cache/
+/.toolchain/
+/benchmark-results/
+/backups/
+
+/.planning/
