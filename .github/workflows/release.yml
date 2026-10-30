@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   prepare:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       tag: ${{ steps.version.outputs.tag }}
       commit: ${{ steps.commit.outputs.sha }}
@@ -42,6 +42,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: refs/tags/${{ steps.version.outputs.tag }}
+      - name: Require private repository and package destination
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          if gh api users/tianba777/packages/container/artex-lonehero > /tmp/package.json 2>/tmp/package.err; then
+            jq -e '.visibility == "private"' /tmp/package.json
+          elif ! grep -q 'HTTP 404' /tmp/package.err; then
+            cat /tmp/package.err >&2
+            exit 1
+          fi
+          # A package's first publication is private by default. Each image push
+          # below checks the resulting package metadata before continuing.
       - name: Pin release commit
         id: commit
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -49,7 +62,7 @@ jobs:
   # ① 前端静态导出（一次），产物给交叉编译各平台复用
   frontend:
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,7 +84,7 @@ jobs:
   # ② 五平台交叉编译（内嵌前端）+ 打 zip
   binaries:
     needs: [prepare, frontend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         include:
@@ -123,7 +136,7 @@ jobs:
   # ③ 汇总所有 zip → 创建 GitHub Release
   release:
     needs: [prepare, binaries, docker-publish]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
@@ -180,7 +193,9 @@ jobs:
             程序包提供 Linux、macOS 的 AMD64 / ARM64 及 Windows AMD64，并附 SHA256SUMS。
             部署和在线更新说明见本仓库 README。
       - name: Publish complete release
-        run: gh release edit "$RELEASE_TAG" --draft=false --latest
+        run: |
+          test "$(gh api "repos/$GH_REPO" --jq .private)" = true
+          gh release edit "$RELEASE_TAG" --title "ARTEX 孤胆英豪 $RELEASE_TAG" --draft=false --latest
 
   # GITHUB_TOKEN 发布的 Release 不会再次触发 release: published 工作流。
   # 直接依赖发布 job，保证 ZIP、校验文件和镜像全部发布成功后才更新 Demo。
@@ -204,6 +219,7 @@ jobs:
           - { arch: amd64, runner: ubuntu-24.04 }
           - { arch: arm64, runner: ubuntu-24.04-arm }
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16-alpine
@@ -242,7 +258,9 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           load: true
           tags: artex:smoke
-          cache-from: type=gha,scope=docker-${{ matrix.arch }}
+          cache-from: |
+            type=gha,scope=docker-${{ matrix.arch }}
+            type=gha,scope=lonehero-toolbox-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}
       - name: Test application startup and embedded frontend
         env:
@@ -257,6 +275,10 @@ jobs:
           jq -e --arg version "${RELEASE_TAG#v}" '.ok == true and .version == $version' /tmp/artex-health.json
           curl --fail http://127.0.0.1:8787/ > /tmp/artex-index.html
           grep -qi '<!doctype html' /tmp/artex-index.html
+          docker exec artex-smoke sh -ec '
+            for tool in nuclei httpx subfinder katana ffuf dalfox sqlmap bbot nmap playwright-cli; do command -v "$tool"; done
+            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 8
+          '
       - name: Push tested architecture image
         uses: docker/build-push-action@v6
         with:
@@ -269,7 +291,16 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.tag }}
             org.opencontainers.image.revision=${{ needs.prepare.outputs.commit }}
             org.opencontainers.image.licenses=AGPL-3.0
-          cache-from: type=gha,scope=docker-${{ matrix.arch }}
+          cache-from: |
+            type=gha,scope=docker-${{ matrix.arch }}
+            type=gha,scope=lonehero-toolbox-${{ matrix.arch }}
+      - name: Verify architecture image is private
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api users/tianba777/packages/container/artex-lonehero --jq '{name,visibility}' > /tmp/package-privacy.json
+          jq -e '.visibility == "private"' /tmp/package-privacy.json
+          cat /tmp/package-privacy.json >> "$GITHUB_STEP_SUMMARY"
 
   # ⑤ 只有两种架构都通过启动验证，才发布正式版本和 latest 镜像。
   docker-publish:
@@ -284,11 +315,14 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish multi-platform image
         env:
+          GH_TOKEN: ${{ github.token }}
           IMAGE: ghcr.io/tianba777/artex-lonehero
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: |
+          test "$(gh api users/tianba777/packages/container/artex-lonehero --jq .visibility)" = private
           docker buildx imagetools create \
             --tag "$IMAGE:$RELEASE_TAG" --tag "$IMAGE:latest" \
             "$IMAGE:$RELEASE_TAG-amd64" "$IMAGE:$RELEASE_TAG-arm64"
           docker buildx imagetools inspect "$IMAGE:$RELEASE_TAG" --raw > /tmp/artex-manifest.json
           jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | index("amd64") != null and index("arm64") != null' /tmp/artex-manifest.json
+          gh api users/tianba777/packages/container/artex-lonehero --jq '{name,visibility}' >> "$GITHUB_STEP_SUMMARY"
