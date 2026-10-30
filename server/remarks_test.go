@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,9 +16,16 @@ import (
 )
 
 func TestRemarksRoundTripPreservesExecutionState(t *testing.T) {
+	if os.Getenv("ARTEX_PG_DSN") == "" {
+		t.Skip("requires isolated ARTEX_PG_DSN")
+	}
+	// Other API tests can still have calendar workers on the package database.
+	// This metadata-only contract needs its own fixture and no background ticks.
+	t.Setenv("ARTEX_PG_DSN", os.Getenv("ARTEX_PG_DSN"))
+	db.SuffixTestDatabase("remarks")
 	m, err := NewManager(t.TempDir(), "")
 	if err != nil {
-		t.Skipf("postgres unavailable: %v", err)
+		t.Fatalf("isolated postgres unavailable: %v", err)
 	}
 	defer m.Close()
 	task, err := m.CreateTask("remark test description", "original goal", nil, 0, 0)
@@ -41,7 +49,7 @@ func TestRemarksRoundTripPreservesExecutionState(t *testing.T) {
 	}
 	originalLifecycle := task.lifecycleSnapshot()
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	cancel()
 	s := New(ctx, m, t.TempDir(), t.TempDir(), t.TempDir())
 	token, err := signJWT(s.jwtKey)
 	if err != nil {
