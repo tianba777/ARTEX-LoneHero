@@ -3,16 +3,16 @@
 基于 RuoJi6/ARTEX，选择性整合 BaaRai 的运行管理、人工接管、费用统计、经验沉淀及扩展工具。保留原有功能和上游同步路径。
 
 - 私有项目：[tianba777/ARTEX-LoneHero](https://github.com/tianba777/ARTEX-LoneHero)
-- 首个正式版本：[v0.4.0](https://github.com/tianba777/ARTEX-LoneHero/releases/tag/v0.4.0)
+- 当前正式版本：[v0.4.1](https://github.com/tianba777/ARTEX-LoneHero/releases/tag/v0.4.1)
 - 新增功能入口：系统 → 孤胆英豪
 - [整合说明、默认行为与同步方法](integration/README.md)
 - [添加自己的 Skills、工具和 MCP](integration/EXTENSIONS.md)
 - [让外部 Agent 驱动 ARTEX](agent-skills/artex-operator/SKILL.md)
-- 外部 Agent 技能下载：[安装 ZIP](https://github.com/tianba777/ARTEX-LoneHero/releases/download/v0.4.0/artex-operator-skill.zip) · [独立 SHA256](https://github.com/tianba777/ARTEX-LoneHero/releases/download/v0.4.0/artex-operator-skill.zip.sha256)（需仓库访问权限）
+- 外部 Agent 技能下载：[安装 ZIP](https://github.com/tianba777/ARTEX-LoneHero/releases/download/v0.4.1/artex-operator-skill.zip) · [独立 SHA256](https://github.com/tianba777/ARTEX-LoneHero/releases/download/v0.4.1/artex-operator-skill.zip.sha256)（需仓库访问权限）
 - [版本来源与移植记录](integration/SOURCES.json)
 - [实际验证结果与兼容范围](integration/VERIFICATION.md)
 - [正式版安装与私有更新](integration/INSTALL.md)
-- 私有发行镜像：ghcr.io/tianba777/artex-lonehero:v0.4.0（另提供 latest）
+- 私有发行镜像：ghcr.io/tianba777/artex-lonehero:v0.4.1（另提供 latest）
 
 以下功能说明沿用 RuoJi6 文档，安装和更新来源已调整为本项目；Demo 链接仍属于上游，只演示原有功能。安装正式版请先阅读上方私有安装指南，使用本项目的发行文件和镜像。
 
@@ -210,7 +210,7 @@ ARTEX_TARGETS=linux/amd64,windows/amd64 ./build.sh --release
 
 本仓库构建的程序固定从 `tianba777/ARTEX-LoneHero` 的最新正式 GitHub Release 检查更新，跳过草稿和预发布版本。旧版官方程序仍指向原作者仓库，因此首次切换必须手动安装本仓库构建的程序；以后发布更高的三段式版本即可通过页面升级。仅推送 main 或 Git 标签但未发布 Release，不会产生可在线安装的新版本。
 
-主干新增「上游项目动态」：同时查看 RuoJi6/ARTEX 与 BaaRai/ARTEX 的最新正式版、main 分支提交、查询时间，以及相对本项目记录快照的提交差异和链接。进入页面使用缓存，点击「刷新上游动态」或「检查更新」重新查询；沿用已保存的更新代理。差异用于评估后续整合，BaaRai 是选择性移植的能力供体，提交数不代表待安装更新。此功能在 v0.4.0 之后加入，已发布的 v0.4.0 程序包和镜像尚不包含它；需要新的正式版本或自行构建当前主干。
+v0.4.1 新增「上游项目动态」：同时查看 RuoJi6/ARTEX 与 BaaRai/ARTEX 的最新正式版、main 分支提交、查询时间，以及相对本项目记录快照的提交差异和链接。进入页面使用缓存，点击「刷新上游动态」或「检查更新」重新查询；沿用已保存的更新代理。差异用于评估后续整合，BaaRai 是选择性移植的能力供体，提交数不代表待安装更新。此功能从 v0.4.1 起随正式程序包和镜像提供，旧版需升级后使用。
 
 点「更新」后：下载当前平台的发布包 → 比对 Release 的 `SHA256SUMS` → 用 `-h` 冒烟测试新二进制 → 暂存为 `artex.new` → 程序退出，由 `start.sh` / `start.bat` 重新拉起并完成换装。页面会自动等到新版本上线后刷新。
 

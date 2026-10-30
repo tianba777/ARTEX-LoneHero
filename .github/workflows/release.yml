@@ -154,11 +154,32 @@ jobs:
       GH_REPO: ${{ github.repository }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
       - uses: actions/download-artifact@v4
         with:
           pattern: pkg-*
           merge-multiple: true
           path: dist
+      - name: Package standalone operator Skill
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          import subprocess
+          import zipfile
+
+          paths = subprocess.check_output(["git", "ls-files", "-z", "--", "agent-skills/artex-operator/"]).decode().strip("\0").split("\0")
+          assert "agent-skills/artex-operator/SKILL.md" in paths
+          assert "agent-skills/artex-operator/LICENSE" in paths
+          output = Path("dist/artex-operator-skill.zip")
+          with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
+              for name in sorted(paths):
+                  path = Path(name)
+                  archive.write(path, path.relative_to("agent-skills"))
+          output.with_suffix(".zip.sha256").write_text(f"{hashlib.sha256(output.read_bytes()).hexdigest()}  {output.name}\n")
+          PY
       - name: Generate checksums
         working-directory: dist
         run: |
@@ -196,11 +217,13 @@ jobs:
           files: |
             dist/*.zip
             dist/SHA256SUMS
+            dist/artex-operator-skill.zip.sha256
           generate_release_notes: true
           body: |
             GHCR 镜像：`ghcr.io/tianba777/artex-lonehero:${{ needs.prepare.outputs.tag }}`，同时提供 `latest`。
             支持 Linux AMD64 / ARM64，Docker 会自动选择宿主机架构。
             程序包提供 Linux、macOS 的 AMD64 / ARM64 及 Windows AMD64，并附 SHA256SUMS。
+            外部 Agent 技能已包含在程序包和镜像中，另提供 artex-operator-skill.zip 与独立校验文件。
             部署和在线更新说明见本仓库 README。
       - name: Publish complete release
         run: |
