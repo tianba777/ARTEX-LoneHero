@@ -34,7 +34,7 @@ docker compose up -d --no-build
 | Linux ARM64 | `artex-0.4.1-linux-arm64.zip` |
 | Windows x86_64 | `artex-0.4.1-windows-amd64.zip` |
 
-每个包包含内嵌前端的程序、启动脚本、8 个内部 Skills、独立的 `agent-skills/artex-operator` 外部技能、浏览器扩展、辅助脚本、说明和许可证。原生包的外部 CLI 程序需在运行机器上另行准备；需要完整预装工具链时选择 Docker。
+每个包包含内嵌前端的程序、启动脚本、10 个内部 Skills、独立的 `agent-skills/artex-operator` 外部技能、浏览器扩展、辅助脚本、说明和许可证。原生包的外部 CLI 程序需在运行机器上另行准备；需要完整预装工具链时选择 Docker。
 
 例如下载 Apple Silicon Mac 安装包：
 

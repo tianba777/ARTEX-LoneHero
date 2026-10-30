@@ -20,8 +20,9 @@
 | 备份 | scripts/backup.sh；数据库必备份，--with-data 同时包含已有 data、skills、配置、签名密钥及 .env；本地备份含敏感材料，目录不提交 |
 | 评测 | scripts/benchmark/；带独立判定与 flag 校验机制的工具，只有人工显式运行才会启动测试目标或调用模型 |
 | 提交前报告复核 | scripts/submission_review/；显式运行、使用独立模型和指定规则，不自动提交报告 |
+| 研究技能 php2shell / edr-bypass-re | skills/ 内置 Skill，授权门槛与实验优先流程写在技能文档内；php2shell 的 PoC 位于源码 scripts/poc/php2shell，不进入发行镜像与 ZIP |
 
-默认安装保留原有 3 个 Skills，增加 api-security、bbot-recon、codeaudit、patch-diff、rea，共 8 个。Docker 工具链加入 nuclei、httpx、subfinder、katana、ffuf、dalfox、sqlmap、bbot；原 nmap、浏览器等继续保留。rea 仍需操作人配置对应 MCP，安装 Skill 不代表 MCP 已可用。
+默认安装保留原有 3 个 Skills，增加 api-security、bbot-recon、codeaudit、patch-diff、rea、php2shell、edr-bypass-re，共 10 个。php2shell 与 edr-bypass-re 是带硬性授权门槛的研究技能：php2shell 面向已授权目标的 LFI 升级验证，先核对漏洞披露程序的组件零日政策并实验优先，配套 PoC 随源码放在 scripts/poc/php2shell（上游 ikow/php2shell-poc，MIT），不进入发行镜像与 ZIP；edr-bypass-re 需要独立授权的 Windows 实验虚拟机，只做防御遥测测量与报告。Docker 工具链加入 nuclei、httpx、subfinder、katana、ffuf、dalfox、sqlmap、bbot；原 nmap、浏览器等继续保留。rea 仍需操作人配置对应 MCP，安装 Skill 不代表 MCP 已可用。
 
 原生 ZIP 和 Docker 镜像均附带报告复核脚本、流量捕获扩展文件、整合说明和许可证。浏览器扩展需在自己的 Chromium 浏览器中手动加载 extension 目录，再配置 ARTEX 地址和自己的登录令牌；不会自动接管浏览器。
 

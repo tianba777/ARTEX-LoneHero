@@ -25,7 +25,8 @@
       "toolbox": ["2fd6ed0", "b48c58d", "4c62b57"],
       "benchmarks": ["86a4efc", "d2f4697", "19e929c", "58b221b", "67971ef", "89ece8e"],
       "backup": ["2c8359f"],
-      "ollama": ["80a1ee9", "978f308"]
+      "ollama": ["80a1ee9", "978f308"],
+      "research_skills": ["750f4eb", "53bda9f"]
     }
   },
   "integration_adjustments": [
@@ -35,7 +36,8 @@
     "Ignored or accepted risk is caution, not proof of a false positive",
     "Subtract both cache-read and cache-write subsets when estimating fresh-input cost",
     "Private self-updates use only the project's own release source",
-    "No import of other ARTEX forks"
+    "No import of other ARTEX forks",
+    "Research skills ship verbatim with their authorization gates; vendored php2shell PoCs stay under scripts/poc in the source tree and out of release images and ZIPs"
   ],
   "excluded": [
     "refusal-posture probe",
