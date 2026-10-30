@@ -310,7 +310,7 @@ jobs:
           grep -qi '<!doctype html' /tmp/artex-index.html
           docker exec artex-smoke sh -ec '
             for tool in nuclei httpx subfinder katana ffuf dalfox sqlmap bbot nmap playwright-cli; do command -v "$tool"; done
-            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 8
+            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 10
           '
       - name: Push tested architecture image
         uses: docker/build-push-action@v6

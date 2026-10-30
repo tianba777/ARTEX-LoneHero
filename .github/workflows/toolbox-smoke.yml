@@ -41,7 +41,7 @@ jobs:
           docker run --rm --entrypoint /bin/sh lonehero:smoke -ec '
             /app/artex -h
             for tool in nuclei httpx subfinder katana ffuf dalfox sqlmap bbot nmap playwright-cli; do command -v "$tool"; done
-            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 8
+            test "$(find /app/skills -name SKILL.md | wc -l)" -eq 10
             test -s /app/scripts/submission_review/review.py
             test -s /app/extension/manifest.json
             test -s /app/LICENSE
