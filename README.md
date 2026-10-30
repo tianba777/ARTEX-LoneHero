@@ -6,6 +6,7 @@
 - 新增功能入口：系统 → 孤胆英豪
 - [整合说明、默认行为与同步方法](integration/README.md)
 - [版本来源与移植记录](integration/SOURCES.json)
+- [实际验证结果与兼容范围](integration/VERIFICATION.md)
 - 默认发行镜像：ghcr.io/tianba777/artex-lonehero（需要先有本项目的成功发行）
 
 以下功能说明沿用 RuoJi6 文档，安装和更新来源已调整为本项目；Demo 链接仍属于上游，只演示原有功能。尚未发布本项目正式版本时，请使用下方“从源码编译单二进制”，不要下载其他分支的程序替代。
