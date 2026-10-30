@@ -38,8 +38,6 @@
     "No import of other ARTEX forks"
   ],
   "excluded": [
-    "php2shell exploit scripts and skill",
-    "edr-bypass-re skill",
     "refusal-posture probe",
     "AI issue/PR reply bot",
     "removal of upstream self-update",

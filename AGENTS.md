@@ -12,7 +12,7 @@ source identities are documented in `integration/README.md` and `integration/SOU
 - Keep lessons candidate-only by default; injection requires explicit adoption
   and task/company scoping. Preserve the opt-in defaults for quiet planning,
   consecutive-failure escalation and the goal gate.
-- Do not add excluded exploit/evasion assets or unrelated forks. Do not run real
+- Do not add unrelated forks. Do not run real
   target scans, benchmarks that launch targets or deployments for routine validation.
 - Verify backend with `go build ./...`, `go vet ./...` and PostgreSQL-backed
   `go test -p 1 -timeout 180s ./...`. Set `ARTEX_PG_DSN` to an isolated disposable
