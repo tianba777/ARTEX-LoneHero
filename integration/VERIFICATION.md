@@ -1,5 +1,13 @@
 # 整合验证记录
 
+## 正式发行 v0.4.2（2026-10-30）
+
+- [私有正式版](https://github.com/tianba777/ARTEX-LoneHero/releases/tag/v0.4.2) 的标签固定在 `1912e2d12fa25fd686cc318a69d5817c3870b17a`；[同一提交完整 CI](https://github.com/tianba777/ARTEX-LoneHero/actions/runs/41041247480) 通过。
+- [发布任务](https://github.com/tianba777/ARTEX-LoneHero/actions/runs/41041250930) 一次通过，未使用恢复任务：五个平台 ZIP 与 `SHA256SUMS` 完整生成，原生 AMD64、ARM64 镜像均完成启动、健康检查、内嵌前端、工具链和私有可见性检查；镜像内 Skills 数断言自本版起为 10 个，覆盖新增的 php2shell 与 edr-bypass-re 技能。
+- 六个 ZIP（五个平台程序和独立外部技能）的 GitHub 资产 SHA256 摘要与 `SHA256SUMS` 逐项核对一致；php2shell 的 PoC 脚本留在源码树 `scripts/poc/php2shell`，不进入发行镜像与 ZIP，与供体打包方式一致。
+- 镜像统一提供 `ghcr.io/tianba777/artex-lonehero:v0.4.2` 与 `latest`，支持 Linux AMD64/ARM64。仓库与镜像保持私有；原 v0.4.0、v0.4.1 标签、程序包和版本镜像保留。
+- 本版仅包含技能移植、文档与断言更新；没有数据库 Schema 变更，没有部署到现有服务，没有运行真实目标扫描。
+
 ## 正式发行 v0.4.1（2026-10-30）
 
 - [私有正式版](https://github.com/tianba777/ARTEX-LoneHero/releases/tag/v0.4.1) 的标签固定在 `cb1eeef3f10b2bd5cd4b37d2fe65dae0e565115a`；[同一提交完整 CI](https://github.com/tianba777/ARTEX-LoneHero/actions/runs/41027785813) 通过。
