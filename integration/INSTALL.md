@@ -1,6 +1,6 @@
 # 正式版安装与私有更新
 
-本页对应 **v0.4.1**，包含上游项目动态和外部 Agent 操作技能。从本私有仓库的 [Releases](https://github.com/tianba777/ARTEX-LoneHero/releases/latest) 下载，Docker 镜像为 `ghcr.io/tianba777/artex-lonehero:v0.4.1`，另提供 `latest`。
+本页对应 **v0.4.2**，包含上游项目动态和外部 Agent 操作技能。从本私有仓库的 [Releases](https://github.com/tianba777/ARTEX-LoneHero/releases/latest) 下载，Docker 镜像为 `ghcr.io/tianba777/artex-lonehero:v0.4.2`，另提供 `latest`。
 
 ## Docker：包含完整工具链
 
@@ -12,7 +12,7 @@ cd ARTEX-LoneHero
 cp .env.example .env
 ```
 
-编辑 `.env`，设置自己的 `POSTGRES_PASSWORD`，首次安装建议将 `ARTEX_TAG` 固定为 `v0.4.1`。模型密钥可稍后在页面配置。
+编辑 `.env`，设置自己的 `POSTGRES_PASSWORD`，首次安装建议将 `ARTEX_TAG` 固定为 `v0.4.2`。模型密钥可稍后在页面配置。
 
 私有镜像需要登录 GHCR。按 [GitHub 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)，使用 GitHub classic PAT 的 `read:packages` 权限，令牌在登录提示中输入：
 
@@ -28,19 +28,19 @@ docker compose up -d --no-build
 
 | 运行环境 | 文件 |
 | --- | --- |
-| Apple Silicon Mac | `artex-0.4.1-darwin-arm64.zip` |
-| Intel Mac | `artex-0.4.1-darwin-amd64.zip` |
-| Linux x86_64 | `artex-0.4.1-linux-amd64.zip` |
-| Linux ARM64 | `artex-0.4.1-linux-arm64.zip` |
-| Windows x86_64 | `artex-0.4.1-windows-amd64.zip` |
+| Apple Silicon Mac | `artex-0.4.2-darwin-arm64.zip` |
+| Intel Mac | `artex-0.4.2-darwin-amd64.zip` |
+| Linux x86_64 | `artex-0.4.2-linux-amd64.zip` |
+| Linux ARM64 | `artex-0.4.2-linux-arm64.zip` |
+| Windows x86_64 | `artex-0.4.2-windows-amd64.zip` |
 
 每个包包含内嵌前端的程序、启动脚本、10 个内部 Skills、独立的 `agent-skills/artex-operator` 外部技能、浏览器扩展、辅助脚本、说明和许可证。原生包的外部 CLI 程序需在运行机器上另行准备；需要完整预装工具链时选择 Docker。
 
 例如下载 Apple Silicon Mac 安装包：
 
 ```bash
-gh release download v0.4.1 --repo tianba777/ARTEX-LoneHero \
-  --pattern artex-0.4.1-darwin-arm64.zip --pattern SHA256SUMS
+gh release download v0.4.2 --repo tianba777/ARTEX-LoneHero \
+  --pattern artex-0.4.2-darwin-arm64.zip --pattern SHA256SUMS
 ```
 
 按 `SHA256SUMS` 校验下载的 ZIP，解压后复制 `config.example.json` 为 `config.json`，填写可用的 PostgreSQL 连接；将示例中的 `skill_dir` 留空或改为 `skills`，使用包内 Skills。数据库需事先准备。
