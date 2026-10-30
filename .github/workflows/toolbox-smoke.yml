@@ -14,6 +14,12 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
+      - name: Free space on the disposable AMD64 runner
+        if: matrix.arch == 'amd64'
+        run: |
+          # These unrelated SDKs belong only to this fresh hosted runner.
+          sudo rm -rf -- /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h /
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: {go-version-file: go.mod}

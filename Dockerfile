@@ -53,7 +53,7 @@ RUN set -eux; \
     git clone --depth 1 --branch 1.9 https://github.com/sqlmapproject/sqlmap /opt/sqlmap; \
     ln -s /opt/sqlmap/sqlmap.py /usr/local/bin/sqlmap; \
     nuclei -version >/dev/null; httpx -version; subfinder -version; katana -version; \
-    ffuf -V >/dev/null; dalfox --version >/dev/null 2>&1 || true; sqlmap --version >/dev/null
+    ffuf -V >/dev/null; dalfox --help >/dev/null; sqlmap --version >/dev/null
 
 # bbot recursive recon orchestrator (#117): blacklanternsecurity/bbot, AGPL-3.0
 # (same license as ARTEX; standalone CLI dependency, not linked code). Pinned
