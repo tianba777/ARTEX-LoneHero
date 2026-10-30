@@ -1,9 +1,47 @@
 package db
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
+
+func TestLessonCompanyScopeReconcilesLegacyAndMultipleCompanies(t *testing.T) {
+	d, err := Open(testDSN(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	a, _, err := d.Companies().UpsertCompany(t.Name()+" A", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanupCompany(d, a)
+	b, _, err := d.Companies().UpsertCompany(t.Name()+" B", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanupCompany(d, b)
+	task, err := d.CreateTaskWithOptions("lesson scope", "test", TaskCreateOptions{Name: t.Name(), CompanyIDs: []int64{a, b}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.DeleteTask(task.ID)
+	if _, err := d.Exec(`UPDATE tasks SET company_id=$2 WHERE id=$1`, task.ID, a); err != nil {
+		t.Fatal(err)
+	}
+	_, company, err := taskLessonScope(context.Background(), d, task.ID)
+	if err != nil || company != 0 {
+		t.Fatalf("legacy company incorrectly made multi-company lessons reusable: company=%d err=%v", company, err)
+	}
+	if _, err := d.Exec(`DELETE FROM task_scope WHERE task_id=$1 AND company_id=$2`, task.ID, b); err != nil {
+		t.Fatal(err)
+	}
+	_, company, err = taskLessonScope(context.Background(), d, task.ID)
+	if err != nil || company != a {
+		t.Fatalf("single company should remain reusable: company=%d err=%v", company, err)
+	}
+}
 
 func TestRenderLessonsDataNotInstructions(t *testing.T) {
 	lessons := []Lesson{

@@ -99,6 +99,10 @@ RUN chmod +x /app/artex /app/start.sh
 COPY skills/ /app/skills/
 COPY scripts/backup.sh /app/scripts/backup.sh
 COPY scripts/benchmark/ /app/scripts/benchmark/
+COPY scripts/submission_review/ /app/scripts/submission_review/
+COPY extension/ /app/extension/
+COPY integration/ /app/integration/
+COPY LICENSE /app/LICENSE
 # data/（SQLite + jwt.key）持久化点
 VOLUME ["/app/data"]
 EXPOSE 8787 8788

@@ -1,11 +1,26 @@
 package server
 
 import (
+	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/Autumn-27/artex/db"
 )
+
+func TestMCPHealthErrorRedactsConnectionSecrets(t *testing.T) {
+	m := &db.MCPServer{Env: json.RawMessage(`{"Authorization":"Bearer dummy-header-secret","API_KEY":"dummy-env-secret"}`)}
+	message := mcpHealthError(m, errors.New(`Post "https://user:dummy-password@host/mcp?key=dummy-query-secret": refused; dummy-header-secret; dummy-env-secret`))
+	for _, secret := range []string{"dummy-password", "dummy-query-secret", "dummy-header-secret", "dummy-env-secret"} {
+		if strings.Contains(message, secret) {
+			t.Fatal("health output contains configured connection material")
+		}
+	}
+	if !strings.Contains(message, "refused") {
+		t.Fatal("health output lost useful connection failure reason")
+	}
+}
 
 // The health columns must reflect the outcome of every connect attempt and
 // transition cleanly down -> ok, so the UI badge and the mcp_status tool can

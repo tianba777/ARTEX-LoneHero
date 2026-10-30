@@ -61,7 +61,12 @@ func lessonDedupeKey(kind string, categoryID, companyID int64, cue, action strin
 func taskLessonScope(ctx context.Context, d *DB, taskID int64) (categoryID, companyID int64, err error) {
 	var cat, comp sql.NullInt64
 	err = d.QueryRowContext(ctx,
-		`SELECT category_id, COALESCE(company_id,(SELECT CASE WHEN COUNT(DISTINCT company_id)=1 THEN MIN(company_id) END FROM task_scope WHERE task_id=tasks.id AND kind='company')) FROM tasks WHERE id=$1 AND deleted_at IS NULL`, taskID).
+		`SELECT category_id,
+        (SELECT CASE WHEN COUNT(DISTINCT company_id)=1 THEN MIN(company_id) END
+         FROM (SELECT tasks.company_id
+               UNION ALL
+               SELECT company_id FROM task_scope WHERE task_id=tasks.id AND kind='company') scope)
+         FROM tasks WHERE id=$1 AND deleted_at IS NULL`, taskID).
 		Scan(&cat, &comp)
 	if err != nil {
 		return 0, 0, err

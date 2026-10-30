@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Autumn-27/artex/db"
@@ -18,6 +20,31 @@ import (
 type mcpClient interface {
 	Tools(context.Context) ([]actool.CoreTool, error)
 	Close() error
+}
+
+var healthURLPattern = regexp.MustCompile(`(?i)https?://[^\s"'<>]+`)
+
+// Health is visible to models, unlike the operator's connection configuration.
+// Do not persist endpoint credentials or configured environment/header values.
+func mcpHealthError(m *db.MCPServer, err error) string {
+	if err == nil {
+		return ""
+	}
+	message := healthURLPattern.ReplaceAllString(err.Error(), "[MCP endpoint]")
+	for _, value := range jsonStrMap(m.Env) {
+		if value == "" {
+			continue
+		}
+		message = strings.ReplaceAll(message, value, "[redacted]")
+		if fields := strings.Fields(value); len(fields) == 2 && (strings.EqualFold(fields[0], "Bearer") || strings.EqualFold(fields[0], "Basic")) {
+			message = strings.ReplaceAll(message, fields[1], "[redacted]")
+		}
+	}
+	runes := []rune(message)
+	if len(runes) > 2000 {
+		message = string(runes[:2000]) + "…"
+	}
+	return message
 }
 
 // connectMCP dials one MCP server per its transport. Callers must Close the client.
@@ -49,13 +76,13 @@ func connectMCP(ctx context.Context, m *db.MCPServer) (mcpClient, error) {
 func (s *Server) discoverAndCacheMCP(ctx context.Context, m *db.MCPServer) error {
 	cl, err := connectMCP(ctx, m)
 	if err != nil {
-		_ = s.m.pg.UpdateMCPHealth(m.ID, false, err.Error())
+		_ = s.m.pg.UpdateMCPHealth(m.ID, false, mcpHealthError(m, err))
 		return err
 	}
 	defer cl.Close()
 	ts, err := cl.Tools(ctx)
 	if err != nil {
-		_ = s.m.pg.UpdateMCPHealth(m.ID, false, err.Error())
+		_ = s.m.pg.UpdateMCPHealth(m.ID, false, mcpHealthError(m, err))
 		return err
 	}
 	_ = s.m.pg.UpdateMCPHealth(m.ID, true, "")

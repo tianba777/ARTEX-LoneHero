@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-alpine
@@ -36,7 +36,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts/benchmark -p 'test_*.py'
       - run: bash -n scripts/backup.sh scripts/sync-upstream.sh
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

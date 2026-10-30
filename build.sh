@@ -183,9 +183,12 @@ package_binary() {
   fi
   cp -R skills "$package_root/"
   cp -R integration "$package_root/"
+  cp -R extension "$package_root/"
+  cp LICENSE "$package_root/"
   mkdir -p "$package_root/scripts"
   cp scripts/backup.sh "$package_root/scripts/"
   cp -R scripts/benchmark "$package_root/scripts/"
+  cp -R scripts/submission_review "$package_root/scripts/"
   cp config.example.json "$package_root/"
   if [ -f README.md ]; then cp README.md "$package_root/"; fi
   (cd "$ARTEX_PACKAGE_DIR" && zip -q -r -9 "$(basename "$archive")" "$(basename "$package_root")")

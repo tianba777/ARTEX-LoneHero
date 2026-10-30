@@ -19,8 +19,11 @@
 | 外部浏览器流量导入 | extension/ 中的 Chromium 扩展，按操作人选择捕获并通过登录令牌导入；不是后台浏览监控 |
 | 备份 | scripts/backup.sh；数据库必备份，--with-data 同时包含已有 data、skills、配置、签名密钥及 .env；本地备份含敏感材料，目录不提交 |
 | 评测 | scripts/benchmark/；带独立判定与 flag 校验机制的工具，只有人工显式运行才会启动测试目标或调用模型 |
+| 提交前报告复核 | scripts/submission_review/；显式运行、使用独立模型和指定规则，不自动提交报告 |
 
 默认安装保留原有 3 个 Skills，增加 api-security、bbot-recon、codeaudit、patch-diff、rea，共 8 个。Docker 工具链加入 nuclei、httpx、subfinder、katana、ffuf、dalfox、sqlmap、bbot；原 nmap、浏览器等继续保留。rea 仍需操作人配置对应 MCP，安装 Skill 不代表 MCP 已可用。
+
+原生 ZIP 和 Docker 镜像均附带报告复核脚本、流量捕获扩展文件、整合说明和许可证。浏览器扩展需在自己的 Chromium 浏览器中手动加载 extension 目录，再配置 ARTEX 地址和自己的登录令牌；不会自动接管浏览器。
 
 供体的 php2shell 新近漏洞利用脚本和 edr-bypass-re 规避检测流程不纳入发行内容。供体的拒答姿态探测、自动回复 bot、删除自更新机制、重复的凭据表和模型轮转机制也不移植。Ruo 的凭据整理、Worker 池、排队/日历/运行时钟、发现归并、请求重放、拓扑、审批和更新机制保持主导。
 
