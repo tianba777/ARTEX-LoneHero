@@ -1,5 +1,6 @@
 ---
 name: artex-operator
+license: AGPL-3.0
 description: 从外部 Agent 通过 ARTEX API 驱动 ARTEX 孤胆英豪，完成连接认证、运行检查、任务编排、进度监控、人工接管、发现及报告整理，以及明确要求的配置维护。用于“用 ARTEX 执行或跟进任务”，不是 ARTEX 内部 Worker 的测试方法 Skill。
 ---
 
@@ -48,3 +49,5 @@ python3 "$SKILL/scripts/artex.py" request GET /api/tasks
 记录不含凭据的实例地址、版本、task ID、目标/限制、预算、最近状态、已提交动作及 request ID、待回复问询、报告/证据路径。监控只报告重要变化。
 
 交付真实任务状态、核实结果及依据、消耗/估算费用、未完成事项、需要用户处理的具体问题。仍在运行、排队、等待审批或人工回复的任务不能报告成成功。
+
+本技能按项目 AGPL-3.0 授权，全文见 [LICENSE](LICENSE)；ARTEX 接口来源与主干归属见项目的 [来源记录](https://github.com/tianba777/ARTEX-LoneHero/blob/main/integration/SOURCES.json)。

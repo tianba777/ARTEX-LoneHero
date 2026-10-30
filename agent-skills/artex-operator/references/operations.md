@@ -18,7 +18,7 @@
 | 合并发现 | `/api/exploration/finding-cases` 及其子接口；先读来源和证据，不能仅为好看而合并不同权限边界的发现 |
 | 流量/重放 | `/api/traffic`、`/api/traffic/exchange`、`/api/repeater/...`；查看只读，重放会向目标发请求，精确路径及 schema 见目录/源码 |
 | 工作区 | `/api/workspace/list`、`/read`、`/download`、`/upload`；用 API 返回路径，不拼接穿越目录路径；证据文件保存到私有位置 |
-| 任务归档 | `/api/tasks/{id}/archive`、`/api/task-archives/{id}/restore` 等；返回 job ID 不代表完成，查询 `/api/task-archives/{id}` 的 state/error 跟进；删除/恢复属于显式维护操作 |
+| 任务归档 | `/api/tasks/{id}/archive`、`/api/task-archives/{id}/restore` 等；返回归档记录和排队状态不代表完成，查询 `/api/task-archives/{id}` 的 state/error 跟进；删除/恢复属于显式维护操作 |
 | 计划任务 | `/api/schedules`、`/{id}/pause`、`/resume`、`/run-now`；新建/恢复会带来后续执行，不能为方便绕开用户手动暂停和日历 |
 | 通知 | `/api/notify/channels` 和 `/test`、deliveries/retry；测试也会外发消息，需有这项委托 |
 | 历史经验 | `/api/lonehero/settings`、`/api/lonehero/lessons`、`/api/tasks/{id}/lessons/extract`；默认 shadow，采纳后还需 inject，保持任务/公司隔离 |
@@ -45,3 +45,11 @@ GET/POST/DELETE 按 `server/side_questions.go`；创建需 question 和 client_r
 健康/统计 API 不证明真实目标操作成功。程序更新以本项目私有 Release 为来源；Docker 完整工具链更新需用户在部署端拉取镜像，控制台二进制更新不更换镜像工具链。不要为完成任务而自动发布、部署或改网关。
 
 备份包括 PostgreSQL、data、skills、配置和签名密钥，交付记录不含这些秘密。修改配置前保存原值；失败先核对实际状态，避免对已成功的变更再次提交。
+
+## 实例安装、启动与连接故障
+
+用户要求安装、启动或维护实例时，按本项目的[私有安装指南](https://github.com/tianba777/ARTEX-LoneHero/blob/main/integration/INSTALL.md)操作。先确认部署机器、原目录/Compose 项目、现有数据卷与用户选择的版本，复用已有服务及凭据，不默认新建第二套数据库或切换实例。
+
+已配置的 Docker 实例可先用 `docker compose ps` 查看状态，按需要读脱敏后的日志；用户已授权启动时，在原部署目录运行 `docker compose up -d --no-build`。原生部署沿用 `start.sh`/`start.bat` 或已有服务管理器。启动后有界检查 `/api/health` 与认证状态，再继续 API 操作。连接失败不等于需要重装或重置管理员密码。
+
+首次私有安装需要有仓库访问权限和 GHCR 登录；程序更新令牌与控制台 JWT 分开。不得将 `.env` 或展开后的完整 Compose 配置输出到日志；缺少认证材料时让用户在其环境中配置，不要求把秘密贴进对话。部署、升级、网络调整、迁移或删除必须在相应委托内。

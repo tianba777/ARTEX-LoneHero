@@ -6,7 +6,7 @@
 
 `ARTEX_URL` 可包含反向代理前缀。HTTPS 保留证书校验，客户端拒绝重定向，避免向其他地址发送会话；URL 不放用户名、密码或 token。
 
-有用户提供的 ARTEX JWT 时设环境变量 `ARTEX_TOKEN`。这是控制台 JWT，不是 GitHub 下载的 `ARTEX_UPDATE_TOKEN`。没有 JWT 时运行 `login` 交互输入密码；非交互时可由用户通过 `ARTEX_PASSWORD` 提供。用户名固定为 `ARTEX`。
+有用户提供的 ARTEX JWT 时设环境变量 `ARTEX_TOKEN`。这是实例的控制台凭据，不是任务级受限令牌，也不是 GitHub 下载的 `ARTEX_UPDATE_TOKEN`；操作范围仍须遵循用户委托。没有 JWT 时运行 `login` 交互输入密码；非交互时可由用户通过 `ARTEX_PASSWORD` 提供。用户名固定为 `ARTEX`。
 
 JWT 存到 `~/.config/artex-operator/` 的实例专属文件，POSIX 权限为 600，输出不含 JWT。`ARTEX_SESSION_FILE` 或全局选项 `--session-file` 可改存储位置；会话核对实例地址，不跨实例复用。Windows 使用当前用户专有目录及对应系统访问权限。
 
