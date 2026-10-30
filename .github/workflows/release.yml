@@ -45,8 +45,18 @@ jobs:
       - name: Require private repository and package destination
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft > /tmp/release-draft 2>/tmp/release-check.err; then
+            if [ "$(cat /tmp/release-draft)" != true ]; then
+              echo "该版本已正式发布，拒绝重新构建或覆盖镜像；请使用更高版本。" >&2
+              exit 1
+            fi
+          elif ! grep -qi 'release not found\|HTTP 404' /tmp/release-check.err; then
+            cat /tmp/release-check.err >&2
+            exit 1
+          fi
           if gh api users/tianba777/packages/container/artex-lonehero > /tmp/package.json 2>/tmp/package.err; then
             jq -e '.visibility == "private"' /tmp/package.json
           elif ! grep -q 'HTTP 404' /tmp/package.err; then

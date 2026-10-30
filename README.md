@@ -3,15 +3,16 @@
 基于 RuoJi6/ARTEX，选择性整合 BaaRai 的运行管理、人工接管、费用统计、经验沉淀及扩展工具。保留原有功能和上游同步路径。
 
 - 私有项目：[tianba777/ARTEX-LoneHero](https://github.com/tianba777/ARTEX-LoneHero)
+- 首个正式版本：[v0.4.0](https://github.com/tianba777/ARTEX-LoneHero/releases/tag/v0.4.0)
 - 新增功能入口：系统 → 孤胆英豪
 - [整合说明、默认行为与同步方法](integration/README.md)
 - [添加自己的 Skills、工具和 MCP](integration/EXTENSIONS.md)
 - [版本来源与移植记录](integration/SOURCES.json)
 - [实际验证结果与兼容范围](integration/VERIFICATION.md)
 - [正式版安装与私有更新](integration/INSTALL.md)
-- 默认发行镜像：ghcr.io/tianba777/artex-lonehero（需要先有本项目的成功发行）
+- 私有发行镜像：ghcr.io/tianba777/artex-lonehero:v0.4.0（另提供 latest）
 
-以下功能说明沿用 RuoJi6 文档，安装和更新来源已调整为本项目；Demo 链接仍属于上游，只演示原有功能。尚未发布本项目正式版本时，请使用下方“从源码编译单二进制”，不要下载其他分支的程序替代。
+以下功能说明沿用 RuoJi6 文档，安装和更新来源已调整为本项目；Demo 链接仍属于上游，只演示原有功能。安装正式版请先阅读上方私有安装指南，使用本项目的发行文件和镜像。
 
 ---
 

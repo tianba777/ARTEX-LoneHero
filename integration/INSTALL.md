@@ -14,7 +14,7 @@ cp .env.example .env
 
 编辑 `.env`，设置自己的 `POSTGRES_PASSWORD`，首次安装建议将 `ARTEX_TAG` 固定为 `v0.4.0`。模型密钥可稍后在页面配置。
 
-私有镜像需要登录 GHCR。使用 GitHub classic PAT 的 `read:packages` 权限，令牌在登录提示中输入：
+私有镜像需要登录 GHCR。按 [GitHub 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)，使用 GitHub classic PAT 的 `read:packages` 权限，令牌在登录提示中输入：
 
 ```bash
 docker login ghcr.io -u tianba777
@@ -43,7 +43,7 @@ gh release download v0.4.0 --repo tianba777/ARTEX-LoneHero \
   --pattern artex-0.4.0-darwin-arm64.zip --pattern SHA256SUMS
 ```
 
-按 `SHA256SUMS` 校验下载的 ZIP，解压后复制 `config.example.json` 为 `config.json`，填写可用的 PostgreSQL 连接。数据库需事先准备。
+按 `SHA256SUMS` 校验下载的 ZIP，解压后复制 `config.example.json` 为 `config.json`，填写可用的 PostgreSQL 连接；将示例中的 `skill_dir` 留空或改为 `skills`，使用包内 Skills。数据库需事先准备。
 macOS/Linux 用 `./start.sh` 启动；Windows 用 `start.bat`。首次打开页面设置管理员账号。
 
 ## 后续更新
